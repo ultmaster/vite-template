@@ -1,5 +1,5 @@
 import { ActionIcon, AppShell, Badge, Group, NavLink as MantineNavLink, Stack, Text } from '@mantine/core';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { NavLink as RouterNavLink, Outlet, useLocation } from 'react-router-dom';
 
 type ConnectionStatus = 'online' | 'offline' | 'unknown';
@@ -22,6 +22,81 @@ const CONNECTION_STATUS_META: Record<ConnectionStatus, { color: string; label: s
   online: { color: 'teal', label: 'Online' },
   unknown: { color: 'gray', label: 'Unknown' },
 };
+
+const DEFAULT_AUTO_REFRESH_MS = 30_000;
+
+type ConnectionOptions = {
+  baseUrl?: string;
+  autoRefreshMs?: number;
+};
+
+function getSameOriginUrl() {
+  return window.location.origin;
+}
+
+function buildHealthUrl(baseUrl: string) {
+  if (baseUrl.startsWith('http://') || baseUrl.startsWith('https://')) {
+    const normalized = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+    return new URL('health', normalized).toString();
+  }
+
+  const normalizedBase = baseUrl.startsWith('/') ? baseUrl : `/${baseUrl}`;
+  const trimmed = normalizedBase.replace(/\/+$/, '');
+  return `${trimmed}/health`;
+}
+
+function useServerConnection({ baseUrl, autoRefreshMs }: ConnectionOptions) {
+  const [status, setStatus] = useState<ConnectionStatus>('unknown');
+
+  useEffect(() => {
+    if (!baseUrl) {
+      setStatus('unknown');
+      return;
+    }
+
+    let disposed = false;
+    let intervalId: number | undefined;
+    let activeController: AbortController | undefined;
+    const healthUrl = buildHealthUrl(baseUrl);
+
+    const check = async () => {
+      activeController?.abort();
+      const controller = new AbortController();
+      activeController = controller;
+
+      try {
+        const response = await fetch(healthUrl, { signal: controller.signal });
+        if (!disposed && activeController === controller) {
+          setStatus(response.ok ? 'online' : 'offline');
+        }
+      } catch (error) {
+        if (disposed || (error instanceof DOMException && error.name === 'AbortError')) {
+          return;
+        }
+
+        if (!disposed && activeController === controller) {
+          setStatus('offline');
+        }
+      }
+    };
+
+    check();
+
+    if (autoRefreshMs && autoRefreshMs > 0) {
+      intervalId = window.setInterval(check, autoRefreshMs);
+    }
+
+    return () => {
+      disposed = true;
+      activeController?.abort();
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [autoRefreshMs, baseUrl]);
+
+  return { status };
+}
 
 function ConnectionIndicator({
   baseUrl,
@@ -50,8 +125,19 @@ function ConnectionIndicator({
   );
 }
 
-export function AppLayout() {
+export type AppLayoutProps = {
+  serverConfig?: ConnectionOptions;
+};
+
+export function AppLayout({ serverConfig }: AppLayoutProps = {}) {
   const location = useLocation();
+  const resolvedBaseUrl = serverConfig?.baseUrl ?? getSameOriginUrl() ?? '';
+  const autoRefreshMs =
+    serverConfig?.autoRefreshMs !== undefined ? serverConfig.autoRefreshMs : DEFAULT_AUTO_REFRESH_MS;
+  const connectionState = useServerConnection({
+    baseUrl: resolvedBaseUrl || undefined,
+    autoRefreshMs,
+  });
   const navItems = useMemo(
     () =>
       NAV_ITEMS.map((item) => ({
@@ -89,7 +175,7 @@ export function AppLayout() {
           </Stack>
         </AppShell.Section>
         <AppShell.Section p="md">
-          <ConnectionIndicator status="unknown" />
+          <ConnectionIndicator baseUrl={resolvedBaseUrl || undefined} status={connectionState.status} />
         </AppShell.Section>
       </AppShell.Navbar>
       <AppShell.Main>

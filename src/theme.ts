@@ -574,3 +574,5 @@ export const shadcnTheme: MantineThemeOverride = createTheme({
     }),
   },
 });
+
+export const theme = shadcnTheme;
