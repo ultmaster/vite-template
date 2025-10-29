@@ -218,40 +218,48 @@ export type ServerConfig = {
 
 ## API Contracts (FastAPI)
 
-**Base:** `/agl/v1`
+The following APIs are implemented in the Python backend.
+
+### Health
+
+* **GET `/health`** — Simple health check endpoint to confirm the server is alive.
+
+### Queue Management
+
+* **POST `/queues/rollouts/enqueue`** — Add a new rollout to the queue (`status="queuing"`), no attempt created yet.
+* **POST `/queues/rollouts/dequeue`** — Claim the oldest queued rollout; transitions to `preparing` and creates a new attempt.
 
 ### Rollouts
-- `GET /rollouts`
-  - Query: `page`, `page_size`, `sort` (e.g. `-start_time`), `status`, `mode`, `search` (prefix/fuzzy id)
-  - Returns: `{ items: RolloutSummary[], page: number, total_pages: number, total: number }`
-  - `RolloutSummary` omits `attempts` but includes `attempts_count` and `latest_attempt` metadata.
-- `GET /rollouts/{rollout_id}`
-  - Returns: `Rollout` (may include `attempts` if `?include_attempts=true`)
-- `GET /rollouts/{rollout_id}/attempts`
-  - Returns: `{ items: Attempt[], total: number }` sorted `sequence_id DESC`.
 
-### 4.2 Resources
-- `GET /resources`
-  - Query: `page`, `page_size`, `sort` (default `-created_at` if provided)
-  - Returns: `{ items: ResourceRecord[], page, total_pages, total }`
-- `GET /resources/{resources_id}` → `ResourceRecord`
+* **POST `/rollouts`** — Start a new rollout immediately and create its first attempt (`status="preparing"`).
+* **GET `/rollouts`** — List all rollouts.
+* **POST `/rollouts/search`** — Search rollouts by `status` or specific rollout IDs. Expects a JSON body like `{"status": ["succeeded", "failed"]}`.
+* **GET `/rollouts/{rollout_id}`** — Retrieve a rollout by its ID. Returns `null` if not found.
+* **POST `/rollouts/{rollout_id}`** — Update rollout metadata or status (can move it to terminal or queued states).
 
-### 4.3 Traces
-- `GET /rollouts/{rollout_id}/attempts/{attempt_id}/spans`
-  - Query: `view=list|waterfall`, pagination for list: `page`, `page_size`; sorting: default `-sequence_id,-start_time,-end_time`
-  - Returns: `TraceSpan[]` (or paginated object for list view)
+### Attempts
 
-### 4.4 Health/Settings
-- `GET /health` → `{ ok: boolean, server_time: string }`
-- `GET /settings` → `ServerConfig`
-- `PUT /settings` (optional) → `ServerConfig`
+* **GET `/rollouts/{rollout_id}/attempts`** — List all attempts for a given rollout (ordered oldest → newest).
+* **GET `/rollouts/{rollout_id}/attempts/latest`** — Get the most recent attempt for a rollout. Returns `null` if not found.
+* **POST `/rollouts/{rollout_id}/attempts`** — Manually create a new retry attempt.
+* **POST `/rollouts/{rollout_id}/attempts/{attempt_id}`** — Update attempt state, worker ID, heartbeat time, or metadata.
 
-**Error payload shape**
-```json
-{ "error": { "code": "string", "message": "string", "detail": any } }
-```
+### Resources
 
----
+* **POST `/resources`** — Create a new immutable resource snapshot and mark it as the latest version.
+* **POST `/resources/{resources_id}`** — Update an existing resource snapshot and mark it as latest.
+* **GET `/resources/{resources_id}`** — Fetch a resource snapshot by ID.
+* **GET `/resources/latest`** — Retrieve the most recent (default) resource snapshot.
+
+### Spans & Telemetry
+
+* **POST `/spans`** — Record a telemetry span from a rollout attempt; also updates heartbeat and state.
+* **GET `/spans`** — Query stored spans by rollout (and optionally attempt). Accepts GET params like `?rollout_id=...&attempt_id=...`. Currently `rollout_id` is required.
+* **POST `/spans/next`** — Get the next sequential ID for span ordering.
+
+### Wait / Synchronization
+
+* **POST `/waits/rollouts`** — Wait until one or more rollouts finish (`succeeded`, `failed`, or `cancelled`), or timeout expires.
 
 ## 5) Redux State & Slices
 
