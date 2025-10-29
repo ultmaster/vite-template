@@ -1,4 +1,5 @@
-import { Divider, Group, Select, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Divider, Select, Stack, Text, TextInput, Title } from '@mantine/core';
+import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { selectConfig } from '../features/config';
 import { setAutoRefreshMs, setBaseUrl, setTheme } from '../features/config/slice';
@@ -20,6 +21,11 @@ const THEME_OPTIONS = [
 export function SettingsPage() {
   const dispatch = useAppDispatch();
   const config = useAppSelector(selectConfig);
+  const [baseUrlInput, setBaseUrlInput] = useState(config.baseUrl);
+
+  useEffect(() => {
+    setBaseUrlInput(config.baseUrl);
+  }, [config.baseUrl]);
 
   return (
     <Stack gap="lg" p="md" data-testid="settings-page">
@@ -34,8 +40,9 @@ export function SettingsPage() {
           </Text>
           <TextInput
             placeholder="http://localhost:8000"
-            value={config.baseUrl}
-            onChange={(event) => dispatch(setBaseUrl(event.currentTarget.value))}
+            value={baseUrlInput}
+            onChange={(event) => setBaseUrlInput(event.currentTarget.value)}
+            onBlur={() => dispatch(setBaseUrl(baseUrlInput.trim()))}
             data-testid="settings-base-url"
           />
         </Stack>

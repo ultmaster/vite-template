@@ -1,22 +1,24 @@
-import { ActionIcon, AppShell, Badge, Group, NavLink as MantineNavLink, Stack, Text } from '@mantine/core';
-import { useEffect, useMemo, useState } from 'react';
+import { AppShell, Badge, Group, Image, NavLink as MantineNavLink, Stack, Text } from '@mantine/core';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { NavLink as RouterNavLink, Outlet, useLocation } from 'react-router-dom';
 import { selectConfig } from '../features/config';
 import { useAppSelector } from '../store/hooks';
+import faviconUrl from '../favicon.svg';
+import { IconActivity, IconCpu, IconLogs, IconSettings } from '@tabler/icons-react';
 
 type ConnectionStatus = 'online' | 'offline' | 'unknown';
 
 type NavItem = {
   label: string;
   to: string;
-  matchPath?: string;
+  icon: ReactNode;
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Rollouts', to: '/rollouts' },
-  { label: 'Resources', to: '/resources' },
-  { label: 'Traces', to: '/traces' },
-  { label: 'Settings', to: '/settings' },
+  { label: 'Rollouts', to: '/rollouts', icon: <IconLogs size={16} /> },
+  { label: 'Resources', to: '/resources', icon: <IconCpu size={16} /> },
+  { label: 'Traces', to: '/traces', icon: <IconActivity size={16} /> },
+  { label: 'Settings', to: '/settings', icon: <IconSettings size={16} /> },
 ];
 
 const CONNECTION_STATUS_META: Record<ConnectionStatus, { color: string; label: string }> = {
@@ -171,9 +173,7 @@ export function AppLayout({ config }: AppLayoutProps = {}) {
       <AppShell.Navbar>
         <AppShell.Section p="md">
           <Group gap="sm">
-            <ActionIcon size="lg" radius="md" variant="filled">
-              AL
-            </ActionIcon>
+            <Image src={faviconUrl} alt="Agent-lightning logo" w={32} h={32} />
             <Text fw={600} size="sm">
               Agent-lightning Dashboard
             </Text>
@@ -189,6 +189,7 @@ export function AppLayout({ config }: AppLayoutProps = {}) {
                 label={item.label}
                 active={item.active}
                 variant="light"
+                leftSection={item.icon}
               />
             ))}
           </Stack>

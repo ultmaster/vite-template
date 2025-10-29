@@ -8,7 +8,7 @@ export type ConfigState = {
   theme: ThemePreference;
 };
 
-const initialState: ConfigState = {
+export const initialConfigState: ConfigState = {
   baseUrl: typeof window !== 'undefined' ? window.location.origin : '',
   autoRefreshMs: 0,
   theme: 'system',
@@ -16,7 +16,7 @@ const initialState: ConfigState = {
 
 const configSlice = createSlice({
   name: 'config',
-  initialState,
+  initialState: initialConfigState,
   reducers: {
     setBaseUrl(state, action: PayloadAction<string>) {
       state.baseUrl = action.payload;
@@ -33,4 +33,3 @@ const configSlice = createSlice({
 export const { setAutoRefreshMs, setBaseUrl, setTheme } = configSlice.actions;
 
 export const configReducer = configSlice.reducer;
-

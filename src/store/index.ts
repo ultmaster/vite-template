@@ -1,12 +1,19 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { configReducer } from '../features/config/slice';
+import { combineReducers, configureStore } from '@reduxjs/toolkit';
+import { configReducer } from '../features/config';
 
-export const store = configureStore({
-  reducer: {
-    config: configReducer,
-  },
+const rootReducer = combineReducers({
+  config: configReducer,
 });
 
-export type RootState = ReturnType<typeof store.getState>;
-export type AppDispatch = typeof store.dispatch;
+export type RootState = ReturnType<typeof rootReducer>;
 
+export const createAppStore = (preloadedState?: Partial<RootState>) =>
+  configureStore({
+    reducer: rootReducer,
+    preloadedState,
+  });
+
+export const store = createAppStore();
+
+export type AppStore = ReturnType<typeof createAppStore>;
+export type AppDispatch = AppStore['dispatch'];
