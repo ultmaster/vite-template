@@ -1,10 +1,36 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { HomePage } from './pages/Home.page';
+import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom';
+import { AppLayout } from './layouts/AppLayout';
+import { ResourcesPage } from './pages/Resources.page';
+import { RolloutsPage } from './pages/Rollouts.page';
+import { SettingsPage } from './pages/Settings.page';
+import { TracesPage } from './pages/Traces.page';
 
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <HomePage />,
+    element: <AppLayout />,
+    children: [
+      {
+        index: true,
+        element: <Navigate to="/rollouts" replace />,
+      },
+      {
+        path: 'rollouts',
+        element: <RolloutsPage />,
+      },
+      {
+        path: 'resources',
+        element: <ResourcesPage />,
+      },
+      {
+        path: 'traces',
+        element: <TracesPage />,
+      },
+      {
+        path: 'settings',
+        element: <SettingsPage />,
+      },
+    ],
   },
 ]);
 
