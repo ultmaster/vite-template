@@ -12,7 +12,7 @@ Tech stack: **React + Mantine UI**, **Redux Toolkit**, **React Router**, **Story
 
 * Brand row: `[ActionIcon] Agent-lightning Dashboard`
 * `Navbar.Section` for main nav: `Rollouts`, `Resources`, `Traces`, `Settings` (use `NavLink`s that preserve current query when it makes sense)
-* Footer: connection indicator (bound to `ServerConfig.baseUrl` & health state)
+* Footer: connection indicator (bound to `ServerConfig.baseUrl` & health state). When refreshing, the status will be a blinking "Refreshing".
 
 ### State/data: Redux Toolkit + RTK Query
 
@@ -105,10 +105,11 @@ export type TraceSpan = {
   // There could be more fields, they can be shown in the "raw" content drawer
 };
 
-// Server connection
-export type ServerConfig = {
+// Configs like server connection
+export type Config = {
   baseUrl: string; // e.g. http://localhost:8000
   autoRefreshMs: number; // polling/refresh interval
+  theme: 'light' | 'dark';
 };
 ```
 
@@ -156,3 +157,13 @@ The following APIs are implemented in the Python backend.
 ### Wait / Synchronization
 
 * **POST `/waits/rollouts`** — Wait until one or more rollouts finish (`succeeded`, `failed`, or `cancelled`), or timeout expires.
+
+## Pages (Draft)
+
+### Settings
+
+The page shows a list of configurations, directly affecting the Redux state and UI. No saving button is needed.
+
+- Auto-refresh interval: can be selected from a dropdown of 5, 15, 60, 300 seconds or off. By default, it's off.
+- Backend port address: can be edited as a text input. By default, it's the same as the current origin of the website.
+- Theme: can be selected from a dropdown of light, dark and system default. By default, it's system default.

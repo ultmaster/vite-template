@@ -47,7 +47,7 @@ const meta: Meta<AppLayoutProps> = {
     return <RouterProvider router={router} />;
   },
   args: {
-    serverConfig: {
+    config: {
       baseUrl: 'http://localhost:8000',
       autoRefreshMs: 0,
     },
@@ -71,7 +71,7 @@ const Placeholder = ({ title, description }: { title: string; description: strin
 
 export const NoServerConfigured: Story = {
   args: {
-    serverConfig: {
+    config: {
       baseUrl: '',
       autoRefreshMs: 0,
     },

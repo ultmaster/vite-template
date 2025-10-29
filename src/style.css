@@ -1,3 +1,19 @@
+@keyframes connection-refreshing-blink {
+  0%, 100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.connection-refreshing {
+  animation: connection-refreshing-blink 1s linear infinite;
+}
+
+/* The following are from shadcn-mantine theme */
+
 /* Checkbox */
 .mantine-Checkbox-root {
   --checkbox-color: var(--mantine-primary-color-filled);

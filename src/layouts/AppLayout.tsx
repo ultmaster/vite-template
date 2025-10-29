@@ -1,6 +1,8 @@
 import { ActionIcon, AppShell, Badge, Group, NavLink as MantineNavLink, Stack, Text } from '@mantine/core';
 import { useEffect, useMemo, useState } from 'react';
 import { NavLink as RouterNavLink, Outlet, useLocation } from 'react-router-dom';
+import { selectConfig } from '../features/config';
+import { useAppSelector } from '../store/hooks';
 
 type ConnectionStatus = 'online' | 'offline' | 'unknown';
 
@@ -47,10 +49,12 @@ function buildHealthUrl(baseUrl: string) {
 
 function useServerConnection({ baseUrl, autoRefreshMs }: ConnectionOptions) {
   const [status, setStatus] = useState<ConnectionStatus>('unknown');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     if (!baseUrl) {
       setStatus('unknown');
+      setIsRefreshing(false);
       return;
     }
 
@@ -63,6 +67,9 @@ function useServerConnection({ baseUrl, autoRefreshMs }: ConnectionOptions) {
       activeController?.abort();
       const controller = new AbortController();
       activeController = controller;
+      if (!disposed) {
+        setIsRefreshing(true);
+      }
 
       try {
         const response = await fetch(healthUrl, { signal: controller.signal });
@@ -76,6 +83,10 @@ function useServerConnection({ baseUrl, autoRefreshMs }: ConnectionOptions) {
 
         if (!disposed && activeController === controller) {
           setStatus('offline');
+        }
+      } finally {
+        if (!disposed && activeController === controller) {
+          setIsRefreshing(false);
         }
       }
     };
@@ -95,15 +106,17 @@ function useServerConnection({ baseUrl, autoRefreshMs }: ConnectionOptions) {
     };
   }, [autoRefreshMs, baseUrl]);
 
-  return { status };
+  return { status, isRefreshing };
 }
 
 function ConnectionIndicator({
   baseUrl,
   status = 'unknown',
+  isRefreshing = false,
 }: {
   baseUrl?: string;
   status?: ConnectionStatus;
+  isRefreshing?: boolean;
 }) {
   const { color, label } = CONNECTION_STATUS_META[status ?? 'unknown'];
   const connectionTarget = baseUrl && baseUrl.length > 0 ? baseUrl : 'No server configured';
@@ -114,9 +127,15 @@ function ConnectionIndicator({
         Server connection
       </Text>
       <Group gap="xs">
-        <Badge color={color} variant="light" radius="xl">
-          {label}
-        </Badge>
+        {isRefreshing ? (
+          <Badge color="blue" variant="light" radius="xl" className="connection-refreshing">
+            Refreshing
+          </Badge>
+        ) : (
+          <Badge color={color} variant="light" radius="xl">
+            {label}
+          </Badge>
+        )}
         <Text size="xs" c="dimmed">
           {connectionTarget}
         </Text>
@@ -126,14 +145,14 @@ function ConnectionIndicator({
 }
 
 export type AppLayoutProps = {
-  serverConfig?: ConnectionOptions;
+  config?: ConnectionOptions;
 };
 
-export function AppLayout({ serverConfig }: AppLayoutProps = {}) {
+export function AppLayout({ config }: AppLayoutProps = {}) {
   const location = useLocation();
-  const resolvedBaseUrl = serverConfig?.baseUrl ?? getSameOriginUrl() ?? '';
+  const resolvedBaseUrl = config?.baseUrl ?? getSameOriginUrl() ?? '';
   const autoRefreshMs =
-    serverConfig?.autoRefreshMs !== undefined ? serverConfig.autoRefreshMs : DEFAULT_AUTO_REFRESH_MS;
+    config?.autoRefreshMs !== undefined ? config.autoRefreshMs : DEFAULT_AUTO_REFRESH_MS;
   const connectionState = useServerConnection({
     baseUrl: resolvedBaseUrl || undefined,
     autoRefreshMs,
@@ -175,12 +194,29 @@ export function AppLayout({ serverConfig }: AppLayoutProps = {}) {
           </Stack>
         </AppShell.Section>
         <AppShell.Section p="md">
-          <ConnectionIndicator baseUrl={resolvedBaseUrl || undefined} status={connectionState.status} />
+          <ConnectionIndicator
+            baseUrl={resolvedBaseUrl || undefined}
+            status={connectionState.status}
+            isRefreshing={connectionState.isRefreshing}
+          />
         </AppShell.Section>
       </AppShell.Navbar>
       <AppShell.Main>
         <Outlet />
       </AppShell.Main>
     </AppShell>
+  );
+}
+
+export function AppLayoutWithState() {
+  const config = useAppSelector(selectConfig);
+
+  return (
+    <AppLayout
+      config={{
+        baseUrl: config.baseUrl,
+        autoRefreshMs: config.autoRefreshMs,
+      }}
+    />
   );
 }

@@ -1,5 +1,5 @@
 import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom';
-import { AppLayout } from './layouts/AppLayout';
+import { AppLayoutWithState } from './layouts/AppLayout';
 import { ResourcesPage } from './pages/Resources.page';
 import { RolloutsPage } from './pages/Rollouts.page';
 import { SettingsPage } from './pages/Settings.page';
@@ -8,7 +8,7 @@ import { TracesPage } from './pages/Traces.page';
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <AppLayout />,
+    element: <AppLayoutWithState />,
     children: [
       {
         index: true,
