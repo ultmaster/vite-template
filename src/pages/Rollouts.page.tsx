@@ -329,8 +329,19 @@ function createRolloutColumns({
       accessor: 'inputPreview',
       title: 'Input',
       render: ({ inputPreview, inputFull }) => (
-        <Text size="sm" c="dimmed" title={inputFull} lineClamp={1}>
+        <Text size="sm" ff="monospace" c="dimmed" title={inputFull} lineClamp={1}>
           {inputPreview}
+        </Text>
+      ),
+    },
+    {
+      accessor: 'attemptSequence',
+      title: 'Attempt Seq.',
+      sortable: true,
+      textAlign: 'right',
+      render: ({ attemptSequence }) => (
+        <Text size="sm" c={attemptSequence ? undefined : 'dimmed'}>
+          {attemptSequence ?? 'N/A'}
         </Text>
       ),
     },
@@ -438,7 +449,7 @@ function createRolloutColumns({
       sortable: true,
       textAlign: 'right',
       render: ({ startTimestamp }) => (
-        <Text size="sm" ff="monospace">
+        <Text size="sm">
           {formatDateTime(startTimestamp)}
         </Text>
       ),
@@ -449,7 +460,7 @@ function createRolloutColumns({
       sortable: true,
       textAlign: 'right',
       render: ({ durationSeconds }) => (
-        <Text size="sm" ff="monospace">
+        <Text size="sm">
           {formatDuration(durationSeconds)}
         </Text>
       ),
@@ -468,7 +479,7 @@ function createRolloutColumns({
           );
         }
         return (
-          <Text size="sm" ff="monospace">
+          <Text size="sm">
             {formatRelativeTime(lastHeartbeatTimestamp)}
           </Text>
         );
@@ -530,8 +541,20 @@ function RolloutAttemptsTable({
     );
   }
 
+  const emptyState = (
+    <Stack gap="xs" align="center" py="md">
+      <Text size="sm" c="dimmed">
+        No attempts found for this rollout.
+      </Text>
+      <Button size="xs" variant="light" leftSection={<IconRefresh size={14} />} onClick={() => refetch()}>
+        Refresh
+      </Button>
+    </Stack>
+  );
+
   return (
     <DataTable<AttemptTableRecord>
+      classNames={{ root: 'rollouts-table rollouts-table--nested' }}
       withColumnBorders
       noHeader
       minHeight={120}
@@ -540,23 +563,14 @@ function RolloutAttemptsTable({
       loaderSize="sm"
       records={attemptRecords}
       columns={columns}
-      emptyState={
-        <Stack gap="xs" align="center" py="md">
-          <Text size="sm" c="dimmed">
-            No attempts found for this rollout.
-          </Text>
-          <Button size="xs" variant="light" leftSection={<IconRefresh size={14} />} onClick={() => refetch()}>
-            Refresh
-          </Button>
-        </Stack>
-      }
+      emptyState={attemptRecords.length === 0 ? emptyState : undefined}
     />
   );
 }
 
 type ComparatorKey = keyof Pick<
   RolloutTableRecord,
-  'rolloutId' | 'attemptId' | 'resourcesId' | 'mode' | 'startTimestamp' | 'durationSeconds' | 'lastHeartbeatTimestamp' | 'workerId' | 'statusValue'
+  'rolloutId' | 'attemptId' | 'attemptSequence' | 'resourcesId' | 'mode' | 'startTimestamp' | 'durationSeconds' | 'lastHeartbeatTimestamp' | 'workerId' | 'statusValue'
 >;
 
 function compareRecords(a: RolloutTableRecord, b: RolloutTableRecord, key: ComparatorKey): number {
@@ -740,6 +754,34 @@ export function RolloutsPage() {
       ? `Unable to load rollouts (status: ${String(error.status)}).`
       : 'Unable to load rollouts.';
 
+  const emptyState = (
+    <Stack gap="sm" align="center" py="xl">
+      <Text fw={600} size="sm">
+        No rollouts found
+      </Text>
+      <Text size="sm" c="dimmed" ta="center">
+        {hasActiveFilters
+          ? 'Try adjusting the search or filters to see more results.'
+          : 'Try refreshing to fetch the latest rollouts.'}
+      </Text>
+      <Group gap="xs">
+        <Button
+          size="xs"
+          variant="light"
+          leftSection={<IconRefresh size={14} />}
+          onClick={() => refetch()}
+        >
+          Refresh
+        </Button>
+        {hasActiveFilters ? (
+          <Button size="xs" variant="subtle" onClick={() => dispatch(resetRolloutsFilters())}>
+            Clear filters
+          </Button>
+        ) : null}
+      </Group>
+    </Stack>
+  );
+
   return (
     <Stack gap="md">
       <Title order={1}>Rollouts</Title>
@@ -767,11 +809,12 @@ export function RolloutsPage() {
 
       {!isError || totalRecords > 0 ? (
         <DataTable<RolloutTableRecord>
+          classNames={{ root: 'rollouts-table' }}
           withTableBorder
           withColumnBorders
           highlightOnHover
           verticalAlign="top"
-          minHeight={320}
+          minHeight={paginatedRecords.length === 0 ? 320 : undefined}
           idAccessor="rolloutId"
           records={paginatedRecords}
           columns={columns}
@@ -785,33 +828,7 @@ export function RolloutsPage() {
           onSortStatusChange={handleSortStatusChange}
           fetching={isFetching && !isLoading}
           loaderSize="sm"
-          emptyState={
-            <Stack gap="sm" align="center" py="xl">
-              <Text fw={600} size="sm">
-                No rollouts found
-              </Text>
-              <Text size="sm" c="dimmed" ta="center">
-                {hasActiveFilters
-                  ? 'Try adjusting the search or filters to see more results.'
-                  : 'Try refreshing to fetch the latest rollouts.'}
-              </Text>
-              <Group gap="xs">
-                <Button
-                  size="xs"
-                  variant="light"
-                  leftSection={<IconRefresh size={14} />}
-                  onClick={() => refetch()}
-                >
-                  Refresh
-                </Button>
-                {hasActiveFilters ? (
-                  <Button size="xs" variant="subtle" onClick={() => dispatch(resetRolloutsFilters())}>
-                    Clear filters
-                  </Button>
-                ) : null}
-              </Group>
-            </Stack>
-          }
+          emptyState={paginatedRecords.length === 0 ? emptyState : undefined}
           rowExpansion={{
             allowMultiple: true,
             expandable: ({ record }) => record.canExpand,
@@ -828,7 +845,7 @@ export function RolloutsPage() {
               },
             },
             content: ({ record }) => (
-              <Box px="lg" py="md">
+              <Box className="rollouts-table__expansion">
                 <RolloutAttemptsTable rollout={record.rollout} columns={columns} />
               </Box>
             ),

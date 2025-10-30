@@ -12,6 +12,23 @@
   animation: connection-refreshing-blink 1s linear infinite;
 }
 
+.rollouts-table .mantine-datatable-empty-state {
+  pointer-events: auto;
+}
+
+.rollouts-table__expansion {
+  background-color: var(--mantine-color-gray-0);
+  border-top: 1px solid var(--mantine-color-gray-3);
+  border-radius: var(--mantine-radius-sm);
+  margin: calc(var(--mantine-spacing-xs) * -1) calc(var(--mantine-spacing-sm) * -1);
+  padding: var(--mantine-spacing-sm);
+}
+
+[data-mantine-color-scheme='dark'] .rollouts-table__expansion {
+  background-color: var(--mantine-color-dark-6);
+  border-color: var(--mantine-color-dark-4);
+}
+
 /* The following are from shadcn-mantine theme */
 
 /* Checkbox */
