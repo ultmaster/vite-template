@@ -171,7 +171,7 @@ export function AppLayout({ config }: AppLayoutProps = {}) {
   return (
     <AppShell padding="md" navbar={{ width: 280, breakpoint: 'sm' }}>
       <AppShell.Navbar>
-        <AppShell.Section p="md">
+        <AppShell.Section p="md" mb="md">
           <Group gap="sm">
             <Image src={faviconUrl} alt="Agent-lightning logo" w={32} h={32} />
             <Text fw={600} size="sm">
