@@ -58,12 +58,11 @@ export type Rollout = {
   status: RolloutStatus;
   mode: RolloutMode;
   resources_id: string | null;
-  start_time: string; // ISO
-  end_time?: string | null; // ISO
+  start_time: float; // timestamp
+  end_time?: float | null; // timestamp
 
-  // optional, fetched lazily when row expands
   // by default, only the latest attempt is fetched
-  attempts?: Attempt[];
+  attempt?: Attempt;
 
   // raw payload shown in drawer
   config: Record<string, unknown>;
@@ -75,8 +74,8 @@ export type Attempt = {
   attempt_id: string;
   sequence_id: number; // strictly increasing per rollout
   status: AttemptStatus;
-  start_time: string; // ISO
-  end_time?: string | null; // ISO
+  start_time: float; // timestamp
+  end_time?: float | null; // timestamp
   worker_id?: string | null;
   // raw payload shown in drawer
   metadata?: Record<string, unknown>;
@@ -100,8 +99,8 @@ export type TraceSpan = {
   name: string;
   status: { status_code: 'UNSET'|'OK'|'ERROR'; description?: string };
   attributes: Record<string, unknown>;
-  start_time: string | null; // ISO
-  end_time: string | null; // ISO
+  start_time: float | null; // timestamp
+  end_time: float | null; // timestamp
   // There could be more fields, they can be shown in the "raw" content drawer
 };
 
@@ -129,9 +128,9 @@ The following APIs are implemented in the Python backend.
 ### Rollouts
 
 * **POST `/rollouts`** — Start a new rollout immediately and create its first attempt (`status="preparing"`).
-* **GET `/rollouts`** — List all rollouts.
-* **POST `/rollouts/search`** — Search rollouts by `status` or specific rollout IDs. Expects a JSON body like `{"status": ["succeeded", "failed"]}`.
-* **GET `/rollouts/{rollout_id}`** — Retrieve a rollout by its ID. Returns `null` if not found.
+* **GET `/rollouts`** — List all rollouts. Returns a list of rollouts and their latest attempts.
+* **POST `/rollouts/search`** — Search rollouts by `status` or specific rollout IDs. Expects a JSON body like `{"status": ["succeeded", "failed"]}`. Returns a list of rollouts and their latest attempts.
+* **GET `/rollouts/{rollout_id}`** — Retrieve a rollout by its ID. Returns `null` if not found. Returns the rollout and its latest attempt.
 * **POST `/rollouts/{rollout_id}`** — Update rollout metadata or status (can move it to terminal or queued states).
 
 ### Attempts
@@ -159,6 +158,30 @@ The following APIs are implemented in the Python backend.
 * **POST `/waits/rollouts`** — Wait until one or more rollouts finish (`succeeded`, `failed`, or `cancelled`), or timeout expires.
 
 ## Pages (Draft)
+
+### Rollouts
+
+Rollout is a large data table that displays all the rollouts from the backend (not only those in the queue). It supports pagination (page size = 100 by default), sorting, filtering on categorical columns and searching on Rollout ID.
+
+By default, the rollouts and their associated latest attempts will be fetched and displayed in the table. They will be sorted by start time in descending order.
+
+The rollout row can be expanded if the rollout is assumed to have multiple attempts (i.e., `.attempt.sequence_id > 1`). The history attempts (including the latest one) will be lazily fetched and displayed in the expanded nested table. The rollout row can also have zero attempts (e.g., when it's queuing), but it should still be displayed in the table.
+
+The table (including the nested ones) should have the following columns:
+
+- Rollout (from `rollout.rollout_id`)
+- Attempt (from `rollout.attempts[-1].attempt_id` or "N/A" if no attempts)
+- Input (from `rollout.input`, in JSON format, limit to 35 characters)
+- Status (from `rollout.status`, in badge format). If it's a expanded nested row, the status should be `attempt.status`. If `rollout.status != attempt.status`, the status should be `${rollout.status} - ${attempt.status}`. Otherwise, it should be `rollout.status`.
+- Resources ID (from `rollout.resources_id`)
+- Mode (from `rollout.mode`)
+- Start Time (if attempt is present, from `attempt.start_time`. Otherwise, from `rollout.start_time`). Time should be displayed in the local timezone as "YYYY-MM-DD HH:mm:ss".
+- Duration (if attempt is present, from `attempt.end_time - attempt.start_time`. Otherwise, from `rollout`). Use a human-readable format like "1h 30m 15s".
+- Last Heartbeat (use a relative time format like "1h 30m 15s" ago if the attempt is present and has a last heartbeat time. Otherwise, use "N/A").
+- Worker ID (from `attempt.worker_id` or "N/A" if no attempt)
+- Actions - two buttons: (1) View Raw JSON; (2) View Traces. Leave the implementation empty for now.
+
+The implementation should only use `GET /rollouts` and `GET /rollouts/{rollout_id}/attempts` APIs. Usage of other advanced APIs like `POST /rollouts/search` is discouraged at the moment.
 
 ### Settings
 
