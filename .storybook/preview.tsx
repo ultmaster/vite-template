@@ -1,7 +1,8 @@
 import '@mantine/core/styles.css';
 import 'mantine-datatable/styles.css';
 
-import '../src/style.css';
+import '../src/styles/theme.css';
+import '../src/styles/app.css';
 
 import { ColorSchemeScript, MantineProvider } from '@mantine/core';
 import { initialize, mswLoader } from 'msw-storybook-addon';

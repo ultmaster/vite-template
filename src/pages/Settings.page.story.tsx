@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { Provider } from 'react-redux';
 import { SettingsPage } from './Settings.page';
-import { initialConfigState, type ConfigState } from '../features/config/slice';
-import { createAppStore } from '../store';
+import { createAppStore } from '@/store';
+import type { ConfigState } from '@/types';
+import { initialConfigState } from '@/features/config/slice';
 
 const meta: Meta<typeof SettingsPage> = {
   title: 'Pages/SettingsPage',

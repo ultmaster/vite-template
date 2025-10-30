@@ -1,12 +1,5 @@
 import { PayloadAction, createSlice } from '@reduxjs/toolkit';
-
-export type ThemePreference = 'light' | 'dark' | 'system';
-
-export type ConfigState = {
-  baseUrl: string;
-  autoRefreshMs: number;
-  theme: ThemePreference;
-};
+import type { ConfigState, ThemePreference } from '@/types';
 
 export const initialConfigState: ConfigState = {
   baseUrl: typeof window !== 'undefined' ? window.location.origin : '',

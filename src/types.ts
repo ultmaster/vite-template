@@ -47,3 +47,11 @@ export type Rollout = {
 };
 
 export type RolloutListItem = Rollout;
+
+export type ThemePreference = 'light' | 'dark' | 'system';
+
+export type ConfigState = {
+  baseUrl: string;
+  autoRefreshMs: number;
+  theme: ThemePreference;
+};
