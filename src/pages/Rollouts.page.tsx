@@ -1,4 +1,4 @@
-import { Alert, Badge, Box, Button, Group, MultiSelect, Skeleton, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Badge, Button, Group, MultiSelect, Skeleton, Stack, Text, TextInput, Title } from '@mantine/core';
 import { IconAlertCircle, IconRefresh, IconSearch } from '@tabler/icons-react';
 import { DataTable, type DataTableColumn, type DataTableSortStatus } from 'mantine-datatable';
 import dayjs from 'dayjs';
@@ -844,11 +844,7 @@ export function RolloutsPage() {
                 });
               },
             },
-            content: ({ record }) => (
-              <Box className="rollouts-table__expansion">
-                <RolloutAttemptsTable rollout={record.rollout} columns={columns} />
-              </Box>
-            ),
+            content: ({ record }) => <RolloutAttemptsTable rollout={record.rollout} columns={columns} />,
           }}
         />
       ) : null}
