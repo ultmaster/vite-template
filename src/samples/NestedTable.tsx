@@ -1,4 +1,6 @@
 
+// @ts-nocheck
+
 import { Box } from '@mantine/core';
 import { IconBuilding, IconChevronRight, IconUser, IconUsers } from '@tabler/icons-react';
 import type { DataTableSortStatus } from 'mantine-datatable';

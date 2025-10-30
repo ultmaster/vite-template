@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { sortBy } from 'lodash';
 import { useEffect, useState } from 'react';
 import { delay, useIsMounted } from '~/lib/examples';

@@ -1,8 +1,11 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { configReducer } from '../features/config';
+import { rolloutsReducer, rolloutsApi } from '../features/rollouts';
 
 const rootReducer = combineReducers({
   config: configReducer,
+  rollouts: rolloutsReducer,
+  [rolloutsApi.reducerPath]: rolloutsApi.reducer,
 });
 
 export type RootState = ReturnType<typeof rootReducer>;
@@ -10,6 +13,7 @@ export type RootState = ReturnType<typeof rootReducer>;
 export const createAppStore = (preloadedState?: Partial<RootState>) =>
   configureStore({
     reducer: rootReducer,
+    middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(rolloutsApi.middleware),
     preloadedState,
   });
 

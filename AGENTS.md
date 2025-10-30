@@ -42,6 +42,8 @@ Single `Drawer` component that is controlled by Redux state. Content swappable b
 
 ## Data Model
 
+The following data model is used at the backend and should be followed by the frontend implementation.
+
 ```ts
 export type RolloutStatus = 'queuing'|'preparing'|'running'|'failed'|'succeeded'|'cancelled'|'requeuing';
 
@@ -181,7 +183,7 @@ The table (including the nested ones) should have the following columns:
 - Worker ID (from `attempt.worker_id` or "N/A" if no attempt)
 - Actions - two buttons: (1) View Raw JSON; (2) View Traces. Leave the implementation empty for now.
 
-The implementation should only use `GET /rollouts` and `GET /rollouts/{rollout_id}/attempts` APIs. Usage of other advanced APIs like `POST /rollouts/search` is discouraged at the moment.
+The implementation should only use `GET /rollouts` and `GET /rollouts/{rollout_id}/attempts` APIs. Usage of other advanced APIs like `POST /rollouts/search` is discouraged at the moment. All the pagination, sorting, filtering and searching should be handled at the frontend side.
 
 ### Settings
 
