@@ -35,7 +35,7 @@ export type Attempt = {
   endTime: Timestamp | null;
   status: AttemptStatus;
   workerId: string | null;
-  lastHeartBeatTime: Timestamp;
+  lastHeartbeatTime: Timestamp | null;
   metadata: Record<string, any> | null;
 };
 

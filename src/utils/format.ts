@@ -98,3 +98,40 @@ export function safeStringify(value: unknown): string {
     return String(value);
   }
 }
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const toCamelCaseKey = (key: string) => key.replace(/_([a-z])/g, (_match, letter: string) => letter.toUpperCase());
+
+const toSnakeCaseKey = (key: string) =>
+  key
+    .replace(/([A-Z])/g, '_$1')
+    .replace(/[-\s]+/g, '_')
+    .toLowerCase();
+
+export const camelCaseKeys = <T>(value: T): T => {
+  if (Array.isArray(value)) {
+    return value.map((item) => camelCaseKeys(item)) as unknown as T;
+  }
+
+  if (isPlainObject(value)) {
+    const entries = Object.entries(value).map(([key, item]) => [toCamelCaseKey(key), camelCaseKeys(item)]);
+    return Object.fromEntries(entries) as T;
+  }
+
+  return value;
+};
+
+export const snakeCaseKeys = <T>(value: T): T => {
+  if (Array.isArray(value)) {
+    return value.map((item) => snakeCaseKeys(item)) as unknown as T;
+  }
+
+  if (isPlainObject(value)) {
+    const entries = Object.entries(value).map(([key, item]) => [toSnakeCaseKey(key), snakeCaseKeys(item)]);
+    return Object.fromEntries(entries) as T;
+  }
+
+  return value;
+};

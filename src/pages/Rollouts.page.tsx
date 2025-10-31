@@ -32,7 +32,7 @@ function RolloutAttemptsContent({
   rollout: Rollout;
   columns: DataTableColumn<RolloutTableRecord>[];
 }) {
-  const { data, isFetching, isError, refetch } = useGetRolloutAttemptsQuery(rollout.rollout_id);
+  const { data, isFetching, isError, refetch } = useGetRolloutAttemptsQuery(rollout.rolloutId);
 
   return (
     <RolloutAttemptsTable

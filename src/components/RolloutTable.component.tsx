@@ -46,19 +46,13 @@ const ROLLOUT_MODE_OPTIONS: RolloutMode[] = ['train', 'val', 'test'];
 
 const DEFAULT_RECORDS_PER_PAGE_OPTIONS = [50, 100, 200, 500];
 
-type BaseRecord = {
-  rollout: Rollout;
-  rolloutId: string;
+type BaseRecord = Rollout & {
   attemptId: string | null;
-  attempt?: Attempt;
   attemptSequence?: number;
   isNested: boolean;
   canExpand: boolean;
-  resourcesId: string | null;
-  mode: RolloutMode;
   inputPreview: string;
   inputFull: string;
-  rolloutStatus: RolloutStatus;
   attemptStatus?: AttemptStatus;
   statusValue: string;
   startTimestamp: number | null;
@@ -71,7 +65,15 @@ type BaseRecord = {
 export type RolloutTableRecord = BaseRecord;
 export type AttemptTableRecord = BaseRecord;
 
-function selectHeartbeatTimestamp(attempt?: Attempt): number | null {
+function selectHeartbeatTimestamp(attempt?: Attempt | null): number | null {
+  if (!attempt) {
+    return null;
+  }
+
+  if (typeof attempt.lastHeartbeatTime === 'number' && !Number.isNaN(attempt.lastHeartbeatTime)) {
+    return attempt.lastHeartbeatTime;
+  }
+
   if (!attempt || !attempt.metadata) {
     return null;
   }
@@ -96,65 +98,57 @@ function selectHeartbeatTimestamp(attempt?: Attempt): number | null {
 export function buildRolloutRecord(rollout: Rollout): RolloutTableRecord {
   const latestAttempt = rollout.attempt;
   const input = formatInputPreview(rollout.input);
-  const startTimestamp = toTimestamp(latestAttempt?.start_time ?? rollout.start_time);
-  const endTimestamp = toTimestamp(latestAttempt?.end_time ?? rollout.end_time);
+  const startTimestamp = toTimestamp(latestAttempt?.startTime ?? rollout.startTime);
+  const endTimestamp = toTimestamp(latestAttempt?.endTime ?? rollout.endTime);
   const durationSeconds = clampToNow(startTimestamp, endTimestamp);
   const lastHeartbeatTimestamp = selectHeartbeatTimestamp(latestAttempt);
-  const attemptId = latestAttempt?.attempt_id ?? null;
+  const attemptId = latestAttempt?.attemptId ?? null;
   const attemptStatus = latestAttempt?.status;
-  const sequenceId = latestAttempt?.sequence_id;
+  const sequenceId = latestAttempt?.sequenceId;
   const statusValue =
     attemptStatus && attemptStatus !== rollout.status ? `${rollout.status}-${attemptStatus}` : rollout.status;
 
   return {
-    rollout,
-    rolloutId: rollout.rollout_id,
-    attempt: latestAttempt,
+    ...rollout,
+    attempt: latestAttempt ?? null,
     attemptId,
     attemptSequence: sequenceId,
     isNested: false,
     canExpand: Boolean(sequenceId && sequenceId > 1),
-    resourcesId: rollout.resources_id,
-    mode: rollout.mode,
     inputPreview: input.preview,
     inputFull: input.full,
-    rolloutStatus: rollout.status,
     attemptStatus,
     statusValue,
     startTimestamp,
     durationSeconds,
     lastHeartbeatTimestamp,
-    workerId: latestAttempt?.worker_id ?? null,
+    workerId: latestAttempt?.workerId ?? null,
     actionsPlaceholder: '',
   };
 }
 
 function buildAttemptRecord(rollout: Rollout, attempt: Attempt): AttemptTableRecord {
   const input = formatInputPreview(rollout.input);
-  const startTimestamp = toTimestamp(attempt.start_time ?? rollout.start_time);
-  const endTimestamp = toTimestamp(attempt.end_time);
+  const startTimestamp = toTimestamp(attempt.startTime ?? rollout.startTime);
+  const endTimestamp = toTimestamp(attempt.endTime);
   const durationSeconds = clampToNow(startTimestamp, endTimestamp);
   const lastHeartbeatTimestamp = selectHeartbeatTimestamp(attempt);
 
   return {
-    rollout,
-    rolloutId: rollout.rollout_id,
+    ...rollout,
     attempt,
-    attemptId: attempt.attempt_id,
-    attemptSequence: attempt.sequence_id,
+    attemptId: attempt.attemptId,
+    attemptSequence: attempt.sequenceId,
     isNested: true,
     canExpand: false,
-    resourcesId: rollout.resources_id,
-    mode: rollout.mode,
     inputPreview: input.preview,
     inputFull: input.full,
-    rolloutStatus: rollout.status,
     attemptStatus: attempt.status,
     statusValue: attempt.status,
     startTimestamp,
     durationSeconds,
     lastHeartbeatTimestamp,
-    workerId: attempt.worker_id ?? null,
+    workerId: attempt.workerId ?? null,
     actionsPlaceholder: '',
   };
 }
@@ -269,15 +263,15 @@ function createRolloutColumns({
         </Stack>
       ),
       filtering: statusFilters.length > 0,
-      render: ({ rolloutStatus, attemptStatus, isNested }) => {
+      render: ({ status, attemptStatus, isNested }) => {
         if (isNested) {
           return <Group gap={4}>{getStatusBadge(attemptStatus ?? 'unknown', 'attempt')}</Group>;
         }
 
-        if (attemptStatus && attemptStatus !== rolloutStatus) {
+        if (attemptStatus && attemptStatus !== status) {
           return (
             <Group gap={4}>
-              {getStatusBadge(rolloutStatus, 'rollout')}
+              {getStatusBadge(status, 'rollout')}
               <Text size="sm" c="dimmed">
                 -
               </Text>
@@ -286,7 +280,7 @@ function createRolloutColumns({
           );
         }
 
-        return getStatusBadge(rolloutStatus, 'rollout');
+        return getStatusBadge(status, 'rollout');
       },
     },
     {
@@ -332,7 +326,11 @@ function createRolloutColumns({
         </Stack>
       ),
       filtering: modeFilters.length > 0,
-      render: ({ mode }) => <Text size="sm">{mode}</Text>,
+      render: ({ mode }) => (
+        <Text size="sm" c={mode ? undefined : 'dimmed'}>
+          {mode ?? 'N/A'}
+        </Text>
+      ),
     },
     {
       accessor: 'startTimestamp',
@@ -520,8 +518,8 @@ export function RolloutTable({
     return rolloutRecords.filter((record) => {
       const matchesSearch =
         normalizedSearch.length === 0 || record.rolloutId.toLowerCase().includes(normalizedSearch);
-      const matchesStatus = !includeStatuses || includeStatuses.includes(record.rolloutStatus);
-      const matchesMode = !includeModes || includeModes.includes(record.mode);
+      const matchesStatus = !includeStatuses || includeStatuses.includes(record.status);
+      const matchesMode = !includeModes || (record.mode !== null && includeModes.includes(record.mode));
 
       return matchesSearch && matchesStatus && matchesMode;
     });
@@ -684,7 +682,7 @@ export function RolloutTable({
                       });
                     },
                   },
-                  content: ({ record }) => renderRowExpansion({ rollout: record.rollout, columns }),
+                  content: ({ record }) => renderRowExpansion({ rollout: record, columns }),
                 }
               : undefined
           }
