@@ -42,77 +42,7 @@ Single `Drawer` component that is controlled by Redux state. Content swappable b
 
 ## Data Model
 
-The following data model is used at the backend and should be followed by the frontend implementation.
-
-```ts
-export type RolloutStatus = 'queuing'|'preparing'|'running'|'failed'|'succeeded'|'cancelled'|'requeuing';
-
-export type AttemptStatus = 'preparing'|'running'|'failed'|'succeeded'|'unresponsive'|'timeout';
-
-export type RolloutMode = 'train'|'val'|'test';
-
-export type TaskInput = any;
-
-// Rollouts and Attempts
-export type Rollout = {
-  rollout_id: string;
-  input: TaskInput;
-  status: RolloutStatus;
-  mode: RolloutMode;
-  resources_id: string | null;
-  start_time: float; // timestamp
-  end_time?: float | null; // timestamp
-
-  // by default, only the latest attempt is fetched
-  attempt?: Attempt;
-
-  // raw payload shown in drawer
-  config: Record<string, unknown>;
-  metadata?: Record<string, unknown>;
-};
-
-export type Attempt = {
-  rollout_id: string;
-  attempt_id: string;
-  sequence_id: number; // strictly increasing per rollout
-  status: AttemptStatus;
-  start_time: float; // timestamp
-  end_time?: float | null; // timestamp
-  worker_id?: string | null;
-  // raw payload shown in drawer
-  metadata?: Record<string, unknown>;
-};
-
-// Resources
-export type Resources = {
-  resources_id: string;
-  named_resources: Record<string, unknown>;
-
-};
-
-// Traces
-export type TraceSpan = {
-  rollout_id: string;
-  attempt_id: string;
-  sequence_id: number;
-  trace_id: string;
-  span_id: string;
-  parent_id?: string | null;
-  name: string;
-  status: { status_code: 'UNSET'|'OK'|'ERROR'; description?: string };
-  attributes: Record<string, unknown>;
-  start_time: float | null; // timestamp
-  end_time: float | null; // timestamp
-  // There could be more fields, they can be shown in the "raw" content drawer
-};
-
-// Configs like server connection
-export type Config = {
-  baseUrl: string; // e.g. http://localhost:8000
-  autoRefreshMs: number; // polling/refresh interval
-  theme: 'light' | 'dark';
-};
-```
+See `src/types.ts` for the data model including `Attempt`, `Rollout`, `Resources`.
 
 ## API Contracts (FastAPI)
 

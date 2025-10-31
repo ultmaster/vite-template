@@ -1,3 +1,5 @@
+// This file should sync with agentlightning/types/core.py
+
 export type RolloutStatus =
   | 'queuing'
   | 'preparing'
@@ -11,42 +13,87 @@ export type AttemptStatus = 'preparing' | 'running' | 'failed' | 'succeeded' | '
 
 export type RolloutMode = 'train' | 'val' | 'test';
 
-export type TaskInput = unknown;
+export type TaskInput = any;
 
-export type Timestamp = number | null | undefined;
+export type Timestamp = number;
 
-export type AttemptMetadata = Record<string, unknown> & {
-  last_heartbeat_time?: number | null;
-  lastHeartbeatTime?: number | null;
-  last_heartbeat_at?: number | null;
-  lastHeartbeatAt?: number | null;
-};
-
+/**
+ * Synced with agentlightning.types.core.Attempt
+ * with camel case and snake case conversions
+ */
 export type Attempt = {
-  rollout_id: string;
-  attempt_id: string;
-  sequence_id: number;
+  rolloutId: string;
+  attemptId: string;
+  sequenceId: number;
+  startTime: Timestamp;
+  endTime: Timestamp | null;
   status: AttemptStatus;
-  start_time: Timestamp;
-  end_time?: Timestamp;
-  worker_id?: string | null;
-  metadata?: AttemptMetadata;
+  workerId: string | null;
+  lastHeartBeatTime: Timestamp;
+  metadata: Record<string, any> | null;
 };
 
+/**
+ * Synced with agentlightning.types.core.Rollout
+ * with camel case and snake case conversions
+ * 
+ * The `attempt` field is from `AttemptedRollout` class.
+ */
 export type Rollout = {
-  rollout_id: string;
+  rolloutId: string;
   input: TaskInput;
+  startTime: Timestamp;
+  endTime: Timestamp | null;
+  mode: RolloutMode | null;
+  resourcesId: string | null;
   status: RolloutStatus;
-  mode: RolloutMode;
-  resources_id: string | null;
-  start_time: Timestamp;
-  end_time?: Timestamp;
-  attempt?: Attempt;
-  config: Record<string, unknown>;
-  metadata?: Record<string, unknown>;
+  config: Record<string, any>;
+  metadata: Record<string, any> | null;
+
+  attempt: Attempt | null;
 };
 
-export type RolloutListItem = Rollout;
+export type Resource = Record<string, any>;
+
+/**
+ * Synced with agentlightning.types.resources.Resources
+ */
+export type Resources = {
+  resourcesId: string;
+  resources: Record<string, Resource>;
+};
+
+/**
+ * Synced with agentlightning.types.traces.Span
+ */
+export type Span = {
+  rolloutId: string;
+  attemptId: string;
+  sequenceId: number;
+  traceId: string;
+  spanId: string;
+  parentId: string | null;
+  name: string;
+  status: { status_code: 'UNSET'|'OK'|'ERROR'; description: string | null };
+  attributes: Record<string, any>;
+  startTime: Timestamp;
+  endTime: Timestamp;
+
+  // The fields below are less frequently used
+  events: any;
+  links: any;
+  context: any;
+  parent: any;
+  resource: any;
+};
+
+// Configs like server connection
+export type Config = {
+  baseUrl: string; // e.g. http://localhost:8000
+  autoRefreshMs: number; // polling/refresh interval
+  theme: 'light' | 'dark';
+};
+
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 

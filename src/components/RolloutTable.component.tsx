@@ -1,5 +1,5 @@
 import { Alert, Badge, Button, Group, MultiSelect, Skeleton, Stack, Text, TextInput, Title } from '@mantine/core';
-import { IconAlertCircle, IconRefresh, IconSearch } from '@tabler/icons-react';
+import { IconAlertCircle, IconRefresh, IconReload, IconSearch } from '@tabler/icons-react';
 import { DataTable, type DataTableColumn, type DataTableSortStatus } from 'mantine-datatable';
 import { useCallback, useEffect, useMemo, useState, type ReactNode, type SetStateAction } from 'react';
 
@@ -208,27 +208,23 @@ function createRolloutColumns({
           {rolloutId}
         </Text>
       ),
+      width: '8em',
+      // TODO: add copy icon
     },
     {
       accessor: 'attemptId',
       title: 'Attempt ID',
       sortable: true,
-      render: ({ attemptId }) => (
+      render: ({ attemptId, attemptSequence }) => (
+        <Group gap="xs">
         <Text size="sm" c={attemptId ? undefined : 'dimmed'}>
           {attemptId ?? 'N/A'}
         </Text>
+        {attemptSequence && attemptSequence > 1 && <Badge leftSection={<IconReload size={12}/>} pl={6} pr={6}>{attemptSequence}</Badge>}
+        </Group>
       ),
-    },
-    {
-      accessor: 'attemptSequence',
-      title: 'Attempt Seq.',
-      sortable: true,
-      textAlign: 'right',
-      render: ({ attemptSequence }) => (
-        <Text size="sm" c={attemptSequence ? undefined : 'dimmed'}>
-          {attemptSequence ?? 'N/A'}
-        </Text>
-      ),
+      width: '10em',
+      // TODO: add copy icon
     },
     {
       accessor: 'inputPreview',
@@ -238,11 +234,14 @@ function createRolloutColumns({
           {inputPreview}
         </Text>
       ),
+      // TODO:
+      // This column takes the rest of the width, and should auto omit contents as ... when overflowed
     },
     {
       accessor: 'statusValue',
       title: 'Status',
       sortable: true,
+      width: '10em',
       filter: ({ close }) => (
         <Stack gap="xs">
           <MultiSelect
@@ -292,8 +291,9 @@ function createRolloutColumns({
     },
     {
       accessor: 'resourcesId',
-      title: 'Resources ID',
+      title: 'Resources',
       sortable: true,
+      width: '8em',
       render: ({ resourcesId }) => (
         <Text size="sm" c={resourcesId ? undefined : 'dimmed'}>
           {resourcesId ?? 'N/A'}
@@ -304,6 +304,7 @@ function createRolloutColumns({
       accessor: 'mode',
       title: 'Mode',
       sortable: true,
+      width: '8em',
       filter: ({ close }) => (
         <Stack gap="xs">
           <MultiSelect
@@ -394,7 +395,6 @@ type ComparatorKey = keyof Pick<
   RolloutTableRecord,
   | 'rolloutId'
   | 'attemptId'
-  | 'attemptSequence'
   | 'resourcesId'
   | 'mode'
   | 'startTimestamp'
