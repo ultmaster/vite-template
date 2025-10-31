@@ -64,6 +64,7 @@ export type Resource = Record<string, any>;
 
 /**
  * Synced with agentlightning.types.resources.Resources
+ * with camel case and snake case conversions
  */
 export type Resources = {
   resourcesId: string;
@@ -72,6 +73,7 @@ export type Resources = {
 
 /**
  * Synced with agentlightning.types.traces.Span
+ * with camel case and snake case conversions
  */
 export type Span = {
   rolloutId: string;
