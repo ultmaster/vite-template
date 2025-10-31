@@ -1,17 +1,51 @@
-import { Alert, Badge, Button, Group, MultiSelect, Skeleton, Stack, Text, TextInput, Title } from '@mantine/core';
-import { IconAlertCircle, IconRefresh, IconReload, IconSearch } from '@tabler/icons-react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+  type SetStateAction,
+} from 'react';
+import {
+  IconAlertCircle,
+  IconBraces,
+  IconRefresh,
+  IconReload,
+  IconSearch,
+  IconTimeline,
+} from '@tabler/icons-react';
 import { DataTable, type DataTableColumn, type DataTableSortStatus } from 'mantine-datatable';
-import { useCallback, useEffect, useMemo, useState, type ReactNode, type SetStateAction } from 'react';
-
+import {
+  ActionIcon,
+  Alert,
+  Badge,
+  Button,
+  Group,
+  MultiSelect,
+  Skeleton,
+  Stack,
+  Text,
+  TextInput,
+  Title,
+  Tooltip,
+} from '@mantine/core';
 import {
   type Attempt,
   type AttemptStatus,
   type Rollout,
   type RolloutMode,
-  type RolloutStatus,
   type RolloutsSortState,
+  type RolloutStatus,
 } from '@/features/rollouts';
-import { clampToNow, formatDateTime, formatDuration, formatInputPreview, formatRelativeTime, formatStatusLabel, toTimestamp } from '@/utils/format';
+import {
+  clampToNow,
+  formatDateTime,
+  formatDuration,
+  formatRelativeTime,
+  formatStatusLabel,
+  safeStringify,
+  toTimestamp,
+} from '@/utils/format';
 
 const ROLLOUT_STATUS_OPTIONS: RolloutStatus[] = [
   'queuing',
@@ -48,82 +82,70 @@ const DEFAULT_RECORDS_PER_PAGE_OPTIONS = [50, 100, 200, 500];
 
 export type RolloutTableRecord = Rollout & {
   attemptId: string | null;
-  attemptSequence?: number;
+  attemptSequence: number | null;
   isNested: boolean;
   canExpand: boolean;
-  inputPreview: string;
-  inputFull: string;
+  inputText: string;
   attemptStatus?: AttemptStatus;
   statusValue: string;
   startTimestamp: number | null;
   durationSeconds: number | null;
   lastHeartbeatTimestamp: number | null;
   workerId: string | null;
+  actionsPlaceholder?: null;
 };
 
 function selectHeartbeatTimestamp(attempt?: Attempt | null): number | null {
-  if (!attempt) {
+  if (!attempt || attempt.lastHeartbeatTime == null || Number.isNaN(attempt.lastHeartbeatTime)) {
     return null;
   }
 
-  if (typeof attempt.lastHeartbeatTime === 'number' && !Number.isNaN(attempt.lastHeartbeatTime)) {
-    return attempt.lastHeartbeatTime;
-  }
-
-  if (!attempt || !attempt.metadata) {
-    return null;
-  }
-
-  const { metadata } = attempt;
-  const candidates = [
-    metadata.lastHeartbeatAt,
-    metadata.last_heartbeat_at,
-    metadata.lastHeartbeatTime,
-    metadata.last_heartbeat_time,
-  ];
-
-  for (const candidate of candidates) {
-    if (typeof candidate === 'number' && !Number.isNaN(candidate)) {
-      return candidate;
-    }
-  }
-
-  return null;
+  return attempt.lastHeartbeatTime;
 }
 
 export function buildRolloutRecord(rollout: Rollout): RolloutTableRecord {
   const latestAttempt = rollout.attempt;
-  const input = formatInputPreview(rollout.input);
+  const inputValue =
+    rollout.input === null || typeof rollout.input === 'undefined'
+      ? 'N/A'
+      : typeof rollout.input === 'string'
+        ? rollout.input
+        : safeStringify(rollout.input);
   const startTimestamp = toTimestamp(latestAttempt?.startTime ?? rollout.startTime);
   const endTimestamp = toTimestamp(latestAttempt?.endTime ?? rollout.endTime);
   const durationSeconds = clampToNow(startTimestamp, endTimestamp);
-  const lastHeartbeatTimestamp = selectHeartbeatTimestamp(latestAttempt);
-  const attemptId = latestAttempt?.attemptId ?? null;
   const attemptStatus = latestAttempt?.status;
   const sequenceId = latestAttempt?.sequenceId;
   const statusValue =
-    attemptStatus && attemptStatus !== rollout.status ? `${rollout.status}-${attemptStatus}` : rollout.status;
+    attemptStatus && attemptStatus !== rollout.status
+      ? `${rollout.status}-${attemptStatus}`
+      : rollout.status;
 
   return {
     ...rollout,
     attempt: latestAttempt ?? null,
-    attemptId,
-    attemptSequence: sequenceId,
+    attemptId: latestAttempt?.attemptId ?? null,
+    attemptSequence: latestAttempt?.sequenceId ?? null,
     isNested: false,
     canExpand: Boolean(sequenceId && sequenceId > 1),
-    inputPreview: input.preview,
-    inputFull: input.full,
+    inputText: inputValue,
     attemptStatus,
     statusValue,
     startTimestamp,
     durationSeconds,
-    lastHeartbeatTimestamp,
+    lastHeartbeatTimestamp: rollout.attempt?.lastHeartbeatTime ?? null,
     workerId: latestAttempt?.workerId ?? null,
+    actionsPlaceholder: null,
   };
 }
 
 function buildAttemptRecord(rollout: Rollout, attempt: Attempt): RolloutTableRecord {
-  const input = formatInputPreview(rollout.input);
+  const inputValue =
+    rollout.input === null || typeof rollout.input === 'undefined'
+      ? 'N/A'
+      : typeof rollout.input === 'string'
+        ? rollout.input
+        : safeStringify(rollout.input);
   const startTimestamp = toTimestamp(attempt.startTime ?? rollout.startTime);
   const endTimestamp = toTimestamp(attempt.endTime);
   const durationSeconds = clampToNow(startTimestamp, endTimestamp);
@@ -136,22 +158,22 @@ function buildAttemptRecord(rollout: Rollout, attempt: Attempt): RolloutTableRec
     attemptSequence: attempt.sequenceId,
     isNested: true,
     canExpand: false,
-    inputPreview: input.preview,
-    inputFull: input.full,
+    inputText: inputValue,
     attemptStatus: attempt.status,
     statusValue: attempt.status,
     startTimestamp,
     durationSeconds,
     lastHeartbeatTimestamp,
     workerId: attempt.workerId ?? null,
+    actionsPlaceholder: null,
   };
 }
 
 function getStatusBadge(status: string, kind: 'rollout' | 'attempt') {
   const color =
     kind === 'rollout'
-      ? ROLLOUT_STATUS_COLORS[status as RolloutStatus] ?? 'gray'
-      : ATTEMPT_STATUS_COLORS[status as AttemptStatus] ?? 'gray';
+      ? (ROLLOUT_STATUS_COLORS[status as RolloutStatus] ?? 'gray')
+      : (ATTEMPT_STATUS_COLORS[status as AttemptStatus] ?? 'gray');
 
   return (
     <Badge size="sm" variant="light" color={color}>
@@ -201,29 +223,53 @@ function createRolloutColumns({
     },
     {
       accessor: 'attemptId',
-      title: 'Attempt ID',
+      title: 'Attempt',
       sortable: true,
       render: ({ attemptId, attemptSequence }) => (
         <Group gap="xs">
-        <Text size="sm" c={attemptId ? undefined : 'dimmed'}>
-          {attemptId ?? 'N/A'}
-        </Text>
-        {attemptSequence && attemptSequence > 1 && <Badge leftSection={<IconReload size={12}/>} pl={6} pr={6}>{attemptSequence}</Badge>}
+          <Text size="sm" c={attemptId ? undefined : 'dimmed'}>
+            {attemptId ?? 'N/A'}
+          </Text>
+          {attemptSequence && attemptSequence > 1 && (
+            <Badge leftSection={<IconReload size={12} />} pl={6} pr={6}>
+              {attemptSequence}
+            </Badge>
+          )}
         </Group>
       ),
-      width: '10em',
+      width: '12em',
       // TODO: add copy icon
     },
     {
-      accessor: 'inputPreview',
+      accessor: 'inputText',
       title: 'Input',
-      render: ({ inputPreview, inputFull }) => (
-        <Text size="sm" ff="monospace" c="dimmed" title={inputFull} lineClamp={1}>
-          {inputPreview}
-        </Text>
-      ),
-      // TODO:
-      // This column takes the rest of the width, and should auto omit contents as ... when overflowed
+      render: ({ inputText }) => {
+        const showTooltip = inputText.length > 120;
+        const content = (
+          <Text
+            size="sm"
+            ff="monospace"
+            c="dimmed"
+            style={{
+              maxWidth: '32rem',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              display: 'block',
+            }}
+          >
+            {inputText}
+          </Text>
+        );
+
+        return showTooltip ? (
+          <Tooltip label={inputText} withArrow>
+            {content}
+          </Tooltip>
+        ) : (
+          content
+        );
+      },
     },
     {
       accessor: 'statusValue',
@@ -267,7 +313,7 @@ function createRolloutColumns({
             <Group gap={4}>
               {getStatusBadge(status, 'rollout')}
               <Text size="sm" c="dimmed">
-                -
+                —
               </Text>
               {getStatusBadge(attemptStatus, 'attempt')}
             </Group>
@@ -373,15 +419,19 @@ function createRolloutColumns({
     {
       accessor: 'actionsPlaceholder',
       title: 'Actions',
-      width: '10em',
+      width: '6.5em',
       render: () => (
-        <Group gap={8}>
-          <Button size="xs" variant="light">
-            View Raw JSON
-          </Button>
-          <Button size="xs" variant="outline">
-            View Traces
-          </Button>
+        <Group gap={4}>
+          <Tooltip label="View raw JSON" withArrow>
+            <ActionIcon aria-label="View raw JSON" variant="subtle" color="gray">
+              <IconBraces size={16} />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="View traces" withArrow>
+            <ActionIcon aria-label="View traces" variant="subtle" color="gray">
+              <IconTimeline size={16} />
+            </ActionIcon>
+          </Tooltip>
         </Group>
       ),
     },
@@ -506,7 +556,7 @@ export function RolloutTable({
       modeFilters,
       onModeFilterChange,
       onModeFilterReset,
-    ],
+    ]
   );
 
   const filteredRecords = useMemo(() => {
@@ -518,7 +568,8 @@ export function RolloutTable({
       const matchesSearch =
         normalizedSearch.length === 0 || record.rolloutId.toLowerCase().includes(normalizedSearch);
       const matchesStatus = !includeStatuses || includeStatuses.includes(record.status);
-      const matchesMode = !includeModes || (record.mode !== null && includeModes.includes(record.mode));
+      const matchesMode =
+        !includeModes || (record.mode !== null && includeModes.includes(record.mode));
 
       return matchesSearch && matchesStatus && matchesMode;
     });
@@ -555,7 +606,9 @@ export function RolloutTable({
 
   useEffect(() => {
     setExpandedRecordIds((current) =>
-      current.filter((id) => paginatedRecords.some((record) => record.rolloutId === id && record.canExpand)),
+      current.filter((id) =>
+        paginatedRecords.some((record) => record.rolloutId === id && record.canExpand)
+      )
     );
   }, [paginatedRecords]);
 
@@ -571,7 +624,7 @@ export function RolloutTable({
     (status: DataTableSortStatus<RolloutTableRecord>) => {
       onSortStatusChange(status);
     },
-    [onSortStatusChange],
+    [onSortStatusChange]
   );
 
   if (isLoading) {
@@ -601,7 +654,12 @@ export function RolloutTable({
           : 'Try refreshing to fetch the latest rollouts.'}
       </Text>
       <Group gap="xs">
-        <Button size="xs" variant="light" leftSection={<IconRefresh size={14} />} onClick={onRefetch}>
+        <Button
+          size="xs"
+          variant="light"
+          leftSection={<IconRefresh size={14} />}
+          onClick={onRefetch}
+        >
           Refresh
         </Button>
         {hasActiveFilters ? (
@@ -631,7 +689,12 @@ export function RolloutTable({
         <Alert color="red" icon={<IconAlertCircle size={18} />} variant="light">
           <Group justify="space-between" align="center">
             <Text size="sm">{errorMessage}</Text>
-            <Button size="xs" variant="light" leftSection={<IconRefresh size={14} />} onClick={onRefetch}>
+            <Button
+              size="xs"
+              variant="light"
+              leftSection={<IconRefresh size={14} />}
+              onClick={onRefetch}
+            >
               Retry
             </Button>
           </Group>
@@ -672,11 +735,13 @@ export function RolloutTable({
                         const resolved =
                           typeof nextRecordIds === 'function'
                             ? nextRecordIds(previous)
-                            : (nextRecordIds ?? []) as (string | number)[];
+                            : ((nextRecordIds ?? []) as (string | number)[]);
                         return resolved
                           .map(String)
                           .filter((id) =>
-                            paginatedRecords.some((tableRecord) => tableRecord.rolloutId === id && tableRecord.canExpand),
+                            paginatedRecords.some(
+                              (tableRecord) => tableRecord.rolloutId === id && tableRecord.canExpand
+                            )
                           );
                       });
                     },
@@ -712,7 +777,10 @@ export function RolloutAttemptsTable({
     if (!attempts) {
       return [];
     }
-    return attempts.map((attempt) => buildAttemptRecord(rollout, attempt));
+    return attempts
+      .map((attempt) => buildAttemptRecord(rollout, attempt))
+      .sort((a, b) => (b.attemptSequence ?? 0) - (a.attemptSequence ?? 0))
+      .filter((record) => record.attemptSequence !== rollout.attempt?.sequenceId);
   }, [attempts, rollout]);
 
   if (isError && !attemptRecords.length) {
@@ -720,7 +788,12 @@ export function RolloutAttemptsTable({
       <Alert color="red" variant="light" icon={<IconAlertCircle size={16} />}>
         <Stack gap="xs">
           <Text size="sm">Unable to load attempts for this rollout.</Text>
-          <Button size="xs" variant="light" leftSection={<IconRefresh size={14} />} onClick={onRetry}>
+          <Button
+            size="xs"
+            variant="light"
+            leftSection={<IconRefresh size={14} />}
+            onClick={onRetry}
+          >
             Retry
           </Button>
         </Stack>
