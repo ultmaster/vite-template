@@ -9,7 +9,13 @@ export type RolloutStatus =
   | 'cancelled'
   | 'requeuing';
 
-export type AttemptStatus = 'preparing' | 'running' | 'failed' | 'succeeded' | 'unresponsive' | 'timeout';
+export type AttemptStatus =
+  | 'preparing'
+  | 'running'
+  | 'failed'
+  | 'succeeded'
+  | 'unresponsive'
+  | 'timeout';
 
 export type RolloutMode = 'train' | 'val' | 'test';
 
@@ -36,8 +42,9 @@ export type Attempt = {
 /**
  * Synced with agentlightning.types.core.Rollout
  * with camel case and snake case conversions
- * 
- * The `attempt` field is from `AttemptedRollout` class.
+ *
+ * The `attempt` field is from `AttemptedRollout` class,
+ * which is the latest attempt of the rollout, if any.
  */
 export type Rollout = {
   rolloutId: string;
@@ -74,7 +81,7 @@ export type Span = {
   spanId: string;
   parentId: string | null;
   name: string;
-  status: { status_code: 'UNSET'|'OK'|'ERROR'; description: string | null };
+  status: { status_code: 'UNSET' | 'OK' | 'ERROR'; description: string | null };
   attributes: Record<string, any>;
   startTime: Timestamp;
   endTime: Timestamp;
@@ -93,7 +100,6 @@ export type Config = {
   autoRefreshMs: number; // polling/refresh interval
   theme: 'light' | 'dark';
 };
-
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 
