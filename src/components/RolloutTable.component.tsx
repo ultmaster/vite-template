@@ -189,6 +189,8 @@ type RolloutColumnsOptions = {
   modeFilters: RolloutMode[];
   onModeFilterChange: (values: RolloutMode[]) => void;
   onModeFilterReset: () => void;
+  onViewRawJson?: (record: RolloutTableRecord) => void;
+  onViewTraces?: (record: RolloutTableRecord) => void;
 };
 
 function createRolloutColumns({
@@ -198,6 +200,8 @@ function createRolloutColumns({
   modeFilters,
   onModeFilterChange,
   onModeFilterReset,
+  onViewRawJson,
+  onViewTraces,
 }: RolloutColumnsOptions): DataTableColumn<RolloutTableRecord>[] {
   const statusOptions = ROLLOUT_STATUS_OPTIONS.map((status) => ({
     value: status,
@@ -404,15 +408,31 @@ function createRolloutColumns({
       accessor: 'actionsPlaceholder',
       title: 'Actions',
       width: '6.5em',
-      render: () => (
+      render: (record) => (
         <Group gap={4}>
-          <Tooltip label="View raw JSON" withArrow>
-            <ActionIcon aria-label="View raw JSON" variant="subtle" color="gray">
+          <Tooltip label="View raw JSON" withArrow disabled={!onViewRawJson}>
+            <ActionIcon
+              aria-label="View raw JSON"
+              variant="subtle"
+              color="gray"
+              onClick={(event) => {
+                event.stopPropagation();
+                onViewRawJson?.(record);
+              }}
+            >
               <IconBraces size={16} />
             </ActionIcon>
           </Tooltip>
-          <Tooltip label="View traces" withArrow>
-            <ActionIcon aria-label="View traces" variant="subtle" color="gray">
+          <Tooltip label="View traces" withArrow disabled={!onViewTraces}>
+            <ActionIcon
+              aria-label="View traces"
+              variant="subtle"
+              color="gray"
+              onClick={(event) => {
+                event.stopPropagation();
+                onViewTraces?.(record);
+              }}
+            >
               <IconTimeline size={16} />
             </ActionIcon>
           </Tooltip>
@@ -485,6 +505,8 @@ export type RolloutTableProps = {
   onRecordsPerPageChange: (value: number) => void;
   onResetFilters: () => void;
   onRefetch: () => void;
+  onViewRawJson?: (record: RolloutTableRecord) => void;
+  onViewTraces?: (record: RolloutTableRecord) => void;
   recordsPerPageOptions?: number[];
   renderRowExpansion?: RowExpansionRenderer;
 };
@@ -511,6 +533,8 @@ export function RolloutTable({
   onRecordsPerPageChange,
   onResetFilters,
   onRefetch,
+  onViewRawJson,
+  onViewTraces,
   recordsPerPageOptions = DEFAULT_RECORDS_PER_PAGE_OPTIONS,
   renderRowExpansion,
 }: RolloutTableProps) {
@@ -532,6 +556,8 @@ export function RolloutTable({
         modeFilters,
         onModeFilterChange,
         onModeFilterReset,
+        onViewRawJson,
+        onViewTraces,
       }),
     [
       statusFilters,
@@ -540,6 +566,8 @@ export function RolloutTable({
       modeFilters,
       onModeFilterChange,
       onModeFilterReset,
+      onViewRawJson,
+      onViewTraces,
     ]
   );
 

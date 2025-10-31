@@ -4,6 +4,7 @@ import { within } from '@testing-library/dom';
 import { Provider } from 'react-redux';
 import { http, HttpResponse, delay } from 'msw';
 import { RolloutsPage } from './Rollouts.page';
+import { RolloutDrawer } from '@/components/RolloutDrawer';
 import { createAppStore } from '../store';
 import { initialConfigState } from '../features/config/slice';
 import { initialRolloutsUiState, type RolloutsUiState } from '../features/rollouts/slice';
@@ -445,7 +446,10 @@ function renderWithStore(uiOverrides?: Partial<RolloutsUiState>) {
 
   return (
     <Provider store={store}>
-      <RolloutsPage />
+      <>
+        <RolloutsPage />
+        <RolloutDrawer />
+      </>
     </Provider>
   );
 }
@@ -579,5 +583,41 @@ export const AutoExpandedAttempt: Story = {
 
     await userEvent.click(toggleButton);
     await canvas.findByText('at-expand-001');
+  },
+};
+
+export const RawJsonDrawer: Story = {
+  render: () => renderWithStore(),
+  parameters: {
+    msw: {
+      handlers: defaultHandlers,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText('ro-7fa3b6e2');
+    const rawButton = await canvas.findByRole('button', { name: 'View raw JSON' });
+    await userEvent.click(rawButton);
+
+    const drawer = await within(document.body).findByRole('dialog', { name: 'ro-7fa3b6e2' });
+    await within(drawer).findByText('Attempt');
+    await within(drawer).findByText(/worker-alpha/);
+  },
+};
+
+export const TracesDrawer: Story = {
+  render: () => renderWithStore(),
+  parameters: {
+    msw: {
+      handlers: defaultHandlers,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText('ro-7fa3b6e2');
+    const tracesButton = await canvas.findByRole('button', { name: 'View traces' });
+    await userEvent.click(tracesButton);
+
+    await within(document.body).findByRole('dialog', { name: 'ro-7fa3b6e2' });
   },
 };

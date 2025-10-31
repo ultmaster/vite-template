@@ -2,6 +2,7 @@ import { AppShell, Badge, Group, Image, NavLink as MantineNavLink, Stack, Text }
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { NavLink as RouterNavLink, Outlet, useLocation } from 'react-router-dom';
 import { selectConfig } from '../features/config';
+import { RolloutDrawer } from '@/components/RolloutDrawer';
 import { useAppSelector } from '../store/hooks';
 import faviconUrl from '../favicon.svg';
 import { IconActivity, IconCpu, IconLogs, IconSettings } from '@tabler/icons-react';
@@ -213,11 +214,14 @@ export function AppLayoutWithState() {
   const config = useAppSelector(selectConfig);
 
   return (
-    <AppLayout
-      config={{
-        baseUrl: config.baseUrl,
-        autoRefreshMs: config.autoRefreshMs,
-      }}
-    />
+    <>
+      <AppLayout
+        config={{
+          baseUrl: config.baseUrl,
+          autoRefreshMs: config.autoRefreshMs,
+        }}
+      />
+      <RolloutDrawer />
+    </>
   );
 }

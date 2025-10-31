@@ -23,6 +23,7 @@ import {
   useGetRolloutAttemptsQuery,
   useGetRolloutsQuery,
 } from '@/features/rollouts';
+import { openDrawer } from '@/features/ui/drawer';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 
 function RolloutAttemptsContent({
@@ -44,6 +45,34 @@ function RolloutAttemptsContent({
       columns={columns}
     />
   );
+}
+
+function toRolloutFromRecord(record: RolloutTableRecord): Rollout {
+  const {
+    rolloutId,
+    input,
+    startTime,
+    endTime,
+    mode,
+    resourcesId,
+    status,
+    config,
+    metadata,
+    attempt,
+  } = record;
+
+  return {
+    rolloutId,
+    input,
+    startTime,
+    endTime,
+    mode,
+    resourcesId,
+    status,
+    config,
+    metadata,
+    attempt: attempt ?? null,
+  };
 }
 
 export function RolloutsPage() {
@@ -126,6 +155,34 @@ export function RolloutsPage() {
     dispatch(resetRolloutsFilters());
   }, [dispatch]);
 
+  const handleViewRawJson = useCallback(
+    (record: RolloutTableRecord) => {
+      dispatch(
+        openDrawer({
+          type: 'rollout-json',
+          rollout: toRolloutFromRecord(record),
+          attempt: record.attempt ?? null,
+          isNested: record.isNested,
+        }),
+      );
+    },
+    [dispatch],
+  );
+
+  const handleViewTraces = useCallback(
+    (record: RolloutTableRecord) => {
+      dispatch(
+        openDrawer({
+          type: 'rollout-traces',
+          rollout: toRolloutFromRecord(record),
+          attempt: record.attempt ?? null,
+          isNested: record.isNested,
+        }),
+      );
+    },
+    [dispatch],
+  );
+
   return (
     <RolloutTable
       rollouts={rolloutsData}
@@ -149,6 +206,8 @@ export function RolloutsPage() {
       onRecordsPerPageChange={handleRecordsPerPageChange}
       onResetFilters={handleResetFilters}
       onRefetch={refetch}
+      onViewRawJson={handleViewRawJson}
+      onViewTraces={handleViewTraces}
       renderRowExpansion={({ rollout, columns }) => <RolloutAttemptsContent rollout={rollout} columns={columns} />}
     />
   );
