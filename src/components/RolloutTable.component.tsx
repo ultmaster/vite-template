@@ -46,7 +46,7 @@ const ROLLOUT_MODE_OPTIONS: RolloutMode[] = ['train', 'val', 'test'];
 
 const DEFAULT_RECORDS_PER_PAGE_OPTIONS = [50, 100, 200, 500];
 
-type BaseRecord = Rollout & {
+type RolloutTableRecord = Rollout & {
   attemptId: string | null;
   attemptSequence?: number;
   isNested: boolean;
@@ -59,11 +59,7 @@ type BaseRecord = Rollout & {
   durationSeconds: number | null;
   lastHeartbeatTimestamp: number | null;
   workerId: string | null;
-  actionsPlaceholder: string;
 };
-
-export type RolloutTableRecord = BaseRecord;
-export type AttemptTableRecord = BaseRecord;
 
 function selectHeartbeatTimestamp(attempt?: Attempt | null): number | null {
   if (!attempt) {
@@ -123,11 +119,10 @@ export function buildRolloutRecord(rollout: Rollout): RolloutTableRecord {
     durationSeconds,
     lastHeartbeatTimestamp,
     workerId: latestAttempt?.workerId ?? null,
-    actionsPlaceholder: '',
   };
 }
 
-function buildAttemptRecord(rollout: Rollout, attempt: Attempt): AttemptTableRecord {
+function buildAttemptRecord(rollout: Rollout, attempt: Attempt): RolloutTableRecord {
   const input = formatInputPreview(rollout.input);
   const startTimestamp = toTimestamp(attempt.startTime ?? rollout.startTime);
   const endTimestamp = toTimestamp(attempt.endTime);
@@ -149,7 +144,6 @@ function buildAttemptRecord(rollout: Rollout, attempt: Attempt): AttemptTableRec
     durationSeconds,
     lastHeartbeatTimestamp,
     workerId: attempt.workerId ?? null,
-    actionsPlaceholder: '',
   };
 }
 
@@ -709,7 +703,7 @@ export function RolloutAttemptsTable({
   onRetry,
   columns,
 }: RolloutAttemptsTableProps) {
-  const attemptRecords = useMemo<AttemptTableRecord[]>(() => {
+  const attemptRecords = useMemo<RolloutTableRecord[]>(() => {
     if (!attempts) {
       return [];
     }
@@ -741,7 +735,7 @@ export function RolloutAttemptsTable({
   );
 
   return (
-    <DataTable<AttemptTableRecord>
+    <DataTable<RolloutTableRecord>
       classNames={{ root: 'rollouts-table rollouts-table--nested' }}
       withColumnBorders
       noHeader
