@@ -225,12 +225,12 @@ function createRolloutColumns({
       accessor: 'attemptId',
       title: 'Attempt',
       sortable: true,
-      render: ({ attemptId, attemptSequence }) => (
+      render: ({ attemptId, attemptSequence, isNested }) => (
         <Group gap="xs">
           <Text size="sm" c={attemptId ? undefined : 'dimmed'}>
             {attemptId ?? 'N/A'}
           </Text>
-          {attemptSequence && attemptSequence > 1 && (
+          {attemptSequence && (isNested || attemptSequence > 1) && (
             <Badge leftSection={<IconReload size={12} />} pl={6} pr={6}>
               {attemptSequence}
             </Badge>
@@ -243,33 +243,17 @@ function createRolloutColumns({
     {
       accessor: 'inputText',
       title: 'Input',
-      render: ({ inputText }) => {
-        const showTooltip = inputText.length > 120;
-        const content = (
-          <Text
-            size="sm"
-            ff="monospace"
-            c="dimmed"
-            style={{
-              maxWidth: '32rem',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              display: 'block',
-            }}
-          >
-            {inputText}
-          </Text>
-        );
-
-        return showTooltip ? (
-          <Tooltip label={inputText} withArrow>
-            {content}
-          </Tooltip>
-        ) : (
-          content
-        );
-      },
+      render: ({ inputText }) => (
+        <Text
+          size="sm"
+          ff="monospace"
+          c="dimmed"
+          lineClamp={1}
+          style={{ width: '100%' }}
+        >
+          {inputText}
+        </Text>
+      ),
     },
     {
       accessor: 'statusValue',
@@ -707,7 +691,7 @@ export function RolloutTable({
           withTableBorder
           withColumnBorders
           highlightOnHover
-          verticalAlign="top"
+          verticalAlign="center"
           minHeight={paginatedRecords.length === 0 ? 320 : undefined}
           idAccessor="rolloutId"
           records={paginatedRecords}
@@ -819,6 +803,7 @@ export function RolloutAttemptsTable({
       noHeader
       minHeight={0}
       idAccessor="attemptId"
+      verticalAlign="center"
       fetching={isFetching}
       loaderSize="sm"
       records={attemptRecords}
