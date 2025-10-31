@@ -46,7 +46,7 @@ const ROLLOUT_MODE_OPTIONS: RolloutMode[] = ['train', 'val', 'test'];
 
 const DEFAULT_RECORDS_PER_PAGE_OPTIONS = [50, 100, 200, 500];
 
-type RolloutTableRecord = Rollout & {
+export type RolloutTableRecord = Rollout & {
   attemptId: string | null;
   attemptSequence?: number;
   isNested: boolean;
@@ -330,21 +330,24 @@ function createRolloutColumns({
       accessor: 'startTimestamp',
       title: 'Start Time',
       sortable: true,
-      textAlign: 'right',
+      textAlign: 'left',
+      width: '12em',
       render: ({ startTimestamp }) => <Text size="sm">{formatDateTime(startTimestamp)}</Text>,
     },
     {
       accessor: 'durationSeconds',
       title: 'Duration',
       sortable: true,
-      textAlign: 'right',
+      textAlign: 'left',
+      width: '10em',
       render: ({ durationSeconds }) => <Text size="sm">{formatDuration(durationSeconds)}</Text>,
     },
     {
       accessor: 'lastHeartbeatTimestamp',
       title: 'Last Heartbeat',
       sortable: true,
-      textAlign: 'right',
+      textAlign: 'left',
+      width: '10em',
       render: ({ lastHeartbeatTimestamp, attempt, isNested }) => {
         if (!attempt && isNested) {
           return (
@@ -358,8 +361,9 @@ function createRolloutColumns({
     },
     {
       accessor: 'workerId',
-      title: 'Worker ID',
+      title: 'Worker',
       sortable: true,
+      width: '10em',
       render: ({ workerId }) => (
         <Text size="sm" c={workerId ? undefined : 'dimmed'}>
           {workerId ?? 'N/A'}
@@ -369,6 +373,7 @@ function createRolloutColumns({
     {
       accessor: 'actionsPlaceholder',
       title: 'Actions',
+      width: '10em',
       render: () => (
         <Group gap={8}>
           <Button size="xs" variant="light">
