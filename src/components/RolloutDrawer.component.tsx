@@ -1,5 +1,6 @@
-import { Badge, Drawer, Group, ScrollArea, Stack, Text, Title } from '@mantine/core';
+import { ActionIcon, Badge, CopyButton, Drawer, Group, ScrollArea, Stack, Text, Tooltip } from '@mantine/core';
 import { CodeHighlight } from '@mantine/code-highlight';
+import { IconCheck, IconCopy } from '@tabler/icons-react';
 import { closeDrawer, selectDrawerContent, selectDrawerIsOpen } from '@/features/ui/drawer';
 import { formatStatusLabel } from '@/utils/format';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -55,6 +56,31 @@ export function RolloutDrawer() {
     : undefined;
   const statusLabel = defaultStatus ? formatStatusLabel(defaultStatus) : null;
 
+  const titleContent =
+    rolloutId.length > 0 ? (
+      <Group gap={6}>
+        <Text fw={600}>{rolloutId}</Text>
+        <CopyButton value={rolloutId}>
+          {({ copied, copy }) => (
+            <Tooltip label={copied ? 'Copied' : 'Copy'} withArrow>
+              <ActionIcon
+                aria-label={`Copy rollout ID ${rolloutId}`}
+                variant="subtle"
+                color={copied ? 'teal' : 'gray'}
+                size="sm"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  copy();
+                }}
+              >
+                {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+              </ActionIcon>
+            </Tooltip>
+          )}
+        </CopyButton>
+      </Group>
+    ) : null;
+
   const jsonValue =
     content?.type === 'rollout-json'
       ? content.isNested && content.attempt
@@ -74,16 +100,15 @@ export function RolloutDrawer() {
       onClose={handleClose}
       overlayProps={{ opacity: 0.5, blur: 4 }}
       withinPortal
-      title={heading}
+      title={titleContent ?? heading}
     >
       {content ? (
         <Stack gap="md" h="100%">
-          <Stack gap={4}>
-            <Title order={4}>{heading}</Title>
-            <Group gap="xs">
-              <Text size="sm" c="dimmed">
-                Attempt
-              </Text>
+          <Stack gap={2}>
+            <Text size="xs" c="dimmed">
+              Attempt
+            </Text>
+            <Group gap="xs" align="center">
               <Text size="sm">{attemptId ?? 'N/A'}</Text>
               {statusLabel ? (
                 <Badge size="sm" variant="light" color={statusBadgeColor}>

@@ -9,6 +9,8 @@ import {
 import {
   IconAlertCircle,
   IconBraces,
+  IconCheck,
+  IconCopy,
   IconRefresh,
   IconReload,
   IconSearch,
@@ -28,6 +30,7 @@ import {
   TextInput,
   Title,
   Tooltip,
+  CopyButton,
 } from '@mantine/core';
 import {
   type Attempt,
@@ -218,12 +221,31 @@ function createRolloutColumns({
       title: 'Rollout',
       sortable: true,
       render: ({ rolloutId }) => (
-        <Text fw={500} size="sm">
-          {rolloutId}
-        </Text>
+        <Group gap={4}>
+          <Text fw={500} size="sm">
+            {rolloutId}
+          </Text>
+          <CopyButton value={rolloutId}>
+            {({ copied, copy }) => (
+              <Tooltip label={copied ? 'Copied' : 'Copy'} withArrow>
+                <ActionIcon
+                  aria-label={`Copy rollout ID ${rolloutId}`}
+                  variant="subtle"
+                  color={copied ? 'teal' : 'gray'}
+                  size="sm"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    copy();
+                  }}
+                >
+                  {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </CopyButton>
+        </Group>
       ),
       width: '8em',
-      // TODO: add copy icon
     },
     {
       accessor: 'attemptId',
@@ -231,9 +253,31 @@ function createRolloutColumns({
       sortable: true,
       render: ({ attemptId, attemptSequence, isNested }) => (
         <Group gap="xs">
-          <Text size="sm" c={attemptId ? undefined : 'dimmed'}>
-            {attemptId ?? 'N/A'}
-          </Text>
+          <Group gap={4}>
+            <Text size="sm" c={attemptId ? undefined : 'dimmed'}>
+              {attemptId ?? 'N/A'}
+            </Text>
+            {attemptId ? (
+              <CopyButton value={attemptId}>
+                {({ copied, copy }) => (
+                  <Tooltip label={copied ? 'Copied' : 'Copy'} withArrow>
+                    <ActionIcon
+                      aria-label={`Copy attempt ID ${attemptId}`}
+                      variant="subtle"
+                      color={copied ? 'teal' : 'gray'}
+                      size="sm"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        copy();
+                      }}
+                    >
+                      {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+              </CopyButton>
+            ) : null}
+          </Group>
           {attemptSequence && (isNested || attemptSequence > 1) && (
             <Badge leftSection={<IconReload size={12} />} pl={6} pr={6}>
               {attemptSequence}
@@ -242,7 +286,6 @@ function createRolloutColumns({
         </Group>
       ),
       width: '12em',
-      // TODO: add copy icon
     },
     {
       accessor: 'inputText',

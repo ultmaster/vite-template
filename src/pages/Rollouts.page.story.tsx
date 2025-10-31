@@ -4,7 +4,7 @@ import { within } from '@testing-library/dom';
 import { Provider } from 'react-redux';
 import { http, HttpResponse, delay } from 'msw';
 import { RolloutsPage } from './Rollouts.page';
-import { RolloutDrawer } from '@/components/RolloutDrawer';
+import { RolloutDrawer } from '@/components/RolloutDrawer.component';
 import { createAppStore } from '../store';
 import { initialConfigState } from '../features/config/slice';
 import { initialRolloutsUiState, type RolloutsUiState } from '../features/rollouts/slice';

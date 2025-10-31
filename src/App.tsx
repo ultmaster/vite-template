@@ -1,4 +1,5 @@
 import '@mantine/core/styles.css';
+import '@mantine/code-highlight/styles.css';
 import 'mantine-datatable/styles.css';
 import './styles/theme.css';
 import './styles/app.css';
