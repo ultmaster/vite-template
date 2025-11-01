@@ -18,10 +18,10 @@ type Story = StoryObj<typeof ResourcesTree>;
 const simpleResources: Resources = {
   resourcesId: 'rs-simple-001',
   resources: {
-    apiKey: 'sk-test-key-123',
-    maxRetries: 3,
-    timeout: 30000,
-    enabled: true,
+    apiKey: { value: 'sk-test-key-123', type: 'secret' },
+    maxRetries: { value: 3, description: 'Maximum retry attempts' },
+    timeout: { value: 30000, unit: 'ms' },
+    enabled: { value: true },
   },
 };
 

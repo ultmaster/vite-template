@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { Box, Code, Group, Stack, Text, Tree, type TreeNodeData } from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
+import { Box, Group, Stack, Text, Tree, type TreeNodeData } from '@mantine/core';
+import { IconAlertCircle, IconChevronDown, IconChevronRight } from '@tabler/icons-react';
 import type { Resources } from '@/types';
 import { safeStringify } from '@/utils/format';
 
@@ -16,7 +16,7 @@ function convertToTreeData(obj: any, key: string = 'root'): TreeNodeData {
     return {
       value: key,
       label: (
-        <Group gap={4}>
+        <Group gap={6}>
           <Text size="sm" fw={500} c="blue">
             {key}
           </Text>
@@ -26,6 +26,16 @@ function convertToTreeData(obj: any, key: string = 'root'): TreeNodeData {
         </Group>
       ),
       children: children.length > 0 ? children : undefined,
+      nodeProps: {
+        icon: (props: any) =>
+          props.hasChildren ? (
+            props.isExpanded ? (
+              <IconChevronDown size={14} />
+            ) : (
+              <IconChevronRight size={14} />
+            )
+          ) : null,
+      },
     };
   }
 
@@ -35,7 +45,7 @@ function convertToTreeData(obj: any, key: string = 'root'): TreeNodeData {
     return {
       value: key,
       label: (
-        <Group gap={4}>
+        <Group gap={6}>
           <Text size="sm" fw={500} c="blue">
             {key}
           </Text>
@@ -45,6 +55,16 @@ function convertToTreeData(obj: any, key: string = 'root'): TreeNodeData {
         </Group>
       ),
       children: children.length > 0 ? children : undefined,
+      nodeProps: {
+        icon: (props: any) =>
+          props.hasChildren ? (
+            props.isExpanded ? (
+              <IconChevronDown size={14} />
+            ) : (
+              <IconChevronRight size={14} />
+            )
+          ) : null,
+      },
     };
   }
 
@@ -56,7 +76,9 @@ function convertToTreeData(obj: any, key: string = 'root'): TreeNodeData {
         <Text size="sm" fw={500} c="blue">
           {key}:
         </Text>
-        <Code>{safeStringify(obj)}</Code>
+        <Text size="sm" ff="monospace" c="dimmed">
+          {safeStringify(obj)}
+        </Text>
       </Group>
     ),
   };

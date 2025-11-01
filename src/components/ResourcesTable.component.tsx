@@ -8,7 +8,6 @@ import {
 } from 'react';
 import { useElementSize } from '@mantine/hooks';
 import {
-  IconBraces,
   IconCheck,
   IconCopy,
   IconRefresh,
@@ -25,6 +24,7 @@ import {
   Tooltip,
 } from '@mantine/core';
 import type { Resources } from '@/types';
+import { safeStringify } from '@/utils/format';
 
 const DEFAULT_RECORDS_PER_PAGE_OPTIONS = [50, 100, 200, 500];
 
@@ -35,34 +35,39 @@ type ColumnVisibilityConfig = {
 
 const COLUMN_VISIBILITY: Record<string, ColumnVisibilityConfig> = {
   resourcesId: { minWidth: 200, priority: 0 },
-  resourceCount: { minWidth: 150, priority: 1 },
-  actionsPlaceholder: { minWidth: 120, priority: 0 },
+  resourceCount: { minWidth: 150, priority: 2 },
+  resourcesPreview: { minWidth: 250, priority: 1 },
 };
 
 export type ResourcesTableRecord = Resources & {
   resourceCount: number;
   canExpand: boolean;
-  actionsPlaceholder?: null;
+  resourcesPreview: string;
 };
 
 export function buildResourcesRecord(resources: Resources): ResourcesTableRecord {
   const resourceCount = Object.keys(resources.resources ?? {}).length;
+  const resourcesValue =
+    resources.resources === null || typeof resources.resources === 'undefined'
+      ? 'N/A'
+      : typeof resources.resources === 'string'
+        ? resources.resources
+        : safeStringify(resources.resources);
 
   return {
     ...resources,
     resourceCount,
     canExpand: resourceCount > 0,
-    actionsPlaceholder: null,
+    resourcesPreview: resourcesValue,
   };
 }
 
-type ResourcesColumnsOptions = {
-  onViewRawJson?: (record: ResourcesTableRecord) => void;
-};
+type ResourcesColumnsOptions = Record<string, never>;
 
-function createResourcesColumns({
-  onViewRawJson,
-}: ResourcesColumnsOptions): DataTableColumn<ResourcesTableRecord>[] {
+function createResourcesColumns(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _options: ResourcesColumnsOptions
+): DataTableColumn<ResourcesTableRecord>[] {
   return [
     {
       accessor: 'resourcesId',
@@ -93,36 +98,23 @@ function createResourcesColumns({
           </CopyButton>
         </Group>
       ),
-      width: '14em',
+      width: '12em',
     },
     {
       accessor: 'resourceCount',
-      title: 'Resource Count',
+      title: 'Count',
       sortable: true,
       textAlign: 'left',
-      width: '10em',
+      width: '8em',
       render: ({ resourceCount }) => <Text size="sm">{resourceCount}</Text>,
     },
     {
-      accessor: 'actionsPlaceholder',
-      title: 'Actions',
-      width: '6.5em',
-      render: (record) => (
-        <Group gap={4}>
-          <Tooltip label="View raw JSON" withArrow disabled={!onViewRawJson}>
-            <ActionIcon
-              aria-label="View raw JSON"
-              variant="subtle"
-              color="gray"
-              onClick={(event) => {
-                event.stopPropagation();
-                onViewRawJson?.(record);
-              }}
-            >
-              <IconBraces size={16} />
-            </ActionIcon>
-          </Tooltip>
-        </Group>
+      accessor: 'resourcesPreview',
+      title: 'Preview',
+      render: ({ resourcesPreview }) => (
+        <Text size="sm" ff="monospace" c="dimmed" lineClamp={1} style={{ width: '100%' }}>
+          {resourcesPreview}
+        </Text>
       ),
     },
   ];
@@ -176,7 +168,6 @@ export type ResourcesTableProps = {
   onRecordsPerPageChange: (value: number) => void;
   onResetFilters: () => void;
   onRefetch: () => void;
-  onViewRawJson?: (record: ResourcesTableRecord) => void;
   recordsPerPageOptions?: number[];
   renderRowExpansion?: RowExpansionRenderer;
 };
@@ -195,7 +186,6 @@ export function ResourcesTable({
   onRecordsPerPageChange,
   onResetFilters,
   onRefetch,
-  onViewRawJson,
   recordsPerPageOptions = DEFAULT_RECORDS_PER_PAGE_OPTIONS,
   renderRowExpansion,
 }: ResourcesTableProps) {
@@ -209,13 +199,7 @@ export function ResourcesTable({
     return resourcesList.map((resourcesItem) => buildResourcesRecord(resourcesItem));
   }, [resourcesList]);
 
-  const columns = useMemo(
-    () =>
-      createResourcesColumns({
-        onViewRawJson,
-      }),
-    [onViewRawJson]
-  );
+  const columns = useMemo(() => createResourcesColumns({}), []);
 
   const responsiveColumns = useMemo(() => {
     const measuredWidth = containerWidth
