@@ -49,6 +49,23 @@ const baseRollout: Rollout = {
   attempt: baseAttempt,
 };
 
+const noAttemptRollout: Rollout = {
+  ...baseRollout,
+  status: 'queuing',
+  attempt: null,
+};
+
+const mismatchRollout: Rollout = {
+  ...baseRollout,
+  status: 'running',
+  attempt: {
+    ...baseAttempt,
+    status: 'failed',
+    endTime: now - 1200,
+    metadata: { info: 'Latest attempt failed', reason: 'Timeout' },
+  },
+};
+
 function renderWithDrawer(content: DrawerContent) {
   const store = createAppStore({
     config: initialConfigState,
@@ -101,4 +118,50 @@ export const TracesPlaceholder: Story = {
       attempt: baseRollout.attempt,
       isNested: false,
     }),
+};
+
+export const NoAttempt: Story = {
+  render: () =>
+    renderWithDrawer({
+      type: 'rollout-json',
+      rollout: noAttemptRollout,
+      attempt: null,
+      isNested: false,
+    }),
+};
+
+export const StatusMismatch: Story = {
+  render: () =>
+    renderWithDrawer({
+      type: 'rollout-json',
+      rollout: mismatchRollout,
+      attempt: mismatchRollout.attempt,
+      isNested: false,
+    }),
+};
+
+export const LightTheme: Story = {
+  render: () =>
+    renderWithDrawer({
+      type: 'rollout-json',
+      rollout: baseRollout,
+      attempt: baseRollout.attempt,
+      isNested: false,
+    }),
+  parameters: {
+    theme: 'light',
+  },
+};
+
+export const DarkTheme: Story = {
+  render: () =>
+    renderWithDrawer({
+      type: 'rollout-json',
+      rollout: mismatchRollout,
+      attempt: mismatchRollout.attempt,
+      isNested: false,
+    }),
+  parameters: {
+    theme: 'dark',
+  },
 };

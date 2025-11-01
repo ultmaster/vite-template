@@ -1,6 +1,7 @@
-import { ActionIcon, Badge, CopyButton, Drawer, Group, ScrollArea, Stack, Text, Tooltip } from '@mantine/core';
-import { CodeHighlight } from '@mantine/code-highlight';
+import { useMemo } from 'react';
+import { ActionIcon, Badge, Box, CopyButton, Drawer, Group, Stack, Text, Tooltip, useMantineColorScheme } from '@mantine/core';
 import { IconCheck, IconCopy } from '@tabler/icons-react';
+import { Editor } from '@monaco-editor/react';
 import { closeDrawer, selectDrawerContent, selectDrawerIsOpen } from '@/features/ui/drawer';
 import { formatStatusLabel } from '@/utils/format';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -45,16 +46,21 @@ export function RolloutDrawer() {
   const dispatch = useAppDispatch();
   const isOpen = useAppSelector(selectDrawerIsOpen);
   const content = useAppSelector(selectDrawerContent);
+  const { colorScheme } = useMantineColorScheme();
 
   const rolloutId = content?.rollout.rolloutId ?? '';
   const attemptId = content?.attempt?.attemptId ?? null;
   const heading = rolloutId;
-  const defaultStatus = content?.attempt?.status ?? content?.rollout.status ?? null;
-  const isAttemptStatus = Boolean(content?.attempt?.status);
-  const statusBadgeColor = defaultStatus
-    ? getStatusBadgeColor(defaultStatus, isAttemptStatus)
-    : undefined;
-  const statusLabel = defaultStatus ? formatStatusLabel(defaultStatus) : null;
+  const rolloutStatus = content?.rollout.status ?? null;
+  const attemptStatus = content?.attempt?.status ?? null;
+  const rolloutStatusLabel = rolloutStatus ? formatStatusLabel(rolloutStatus) : null;
+  const attemptStatusLabel = attemptStatus ? formatStatusLabel(attemptStatus) : null;
+  const hasStatusMismatch =
+    rolloutStatus !== null && attemptStatus !== null && rolloutStatus !== attemptStatus;
+  const rolloutBadgeColor = rolloutStatus ? getStatusBadgeColor(rolloutStatus, false) : undefined;
+  const attemptBadgeColor = attemptStatus ? getStatusBadgeColor(attemptStatus, true) : undefined;
+  const showRolloutBadgeInHeading = Boolean(rolloutStatusLabel && (!attemptStatus || hasStatusMismatch));
+  const showAttemptBadge = Boolean(attemptStatusLabel && attemptStatus);
 
   const titleContent =
     rolloutId.length > 0 ? (
@@ -79,6 +85,11 @@ export function RolloutDrawer() {
               </Tooltip>
             )}
           </CopyButton>
+          {showRolloutBadgeInHeading && rolloutStatusLabel ? (
+            <Badge size="sm" variant="light" color={rolloutBadgeColor}>
+              {rolloutStatusLabel}
+            </Badge>
+          ) : null}
         </Group>
         <Group gap="xs">
           {attemptId && (
@@ -87,9 +98,16 @@ export function RolloutDrawer() {
               <Text size="sm" c="dimmed">{attemptId}</Text>
             </Group>
           )}
-          {statusLabel && (
-            <Badge size="sm" variant="light" color={statusBadgeColor}>{statusLabel}</Badge>
-          )}
+          {showAttemptBadge && attemptStatusLabel ? (
+            <Badge size="sm" variant="light" color={attemptBadgeColor}>
+              {attemptStatusLabel}
+            </Badge>
+          ) : null}
+          {!showRolloutBadgeInHeading && !attemptStatus && rolloutStatusLabel ? (
+            <Badge size="sm" variant="light" color={rolloutBadgeColor}>
+              {rolloutStatusLabel}
+            </Badge>
+          ) : null}
         </Group>
       </Stack>
     ) : null;
@@ -100,6 +118,8 @@ export function RolloutDrawer() {
         ? content.attempt
         : content?.rollout
       : null;
+  const formattedJson = useMemo(() => (jsonValue ? formatJson(jsonValue) : ''), [jsonValue]);
+  const editorTheme = colorScheme === 'dark' ? 'vs-dark' : 'vs-light';
 
   const handleClose = () => {
     dispatch(closeDrawer());
@@ -113,14 +133,42 @@ export function RolloutDrawer() {
       onClose={handleClose}
       overlayProps={{ opacity: 0.5, blur: 4 }}
       withinPortal
+      styles={{
+        content: {
+          display: 'flex',
+          flexDirection: 'column',
+          maxHeight: '100vh',
+        },
+        body: {
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          padding: 'var(--mantine-spacing-md)',
+          minHeight: 0,
+          overflow: 'hidden',
+        },
+      }}
       title={titleContent ?? heading}
     >
       {content ? (
-        <Stack gap="md" h="100%">
+        <Stack gap="md" h="100%" style={{ flex: 1, minHeight: 0 }}>
           {content.type === 'rollout-json' && jsonValue ? (
-            <ScrollArea h="100%" type="always">
-              <CodeHighlight code={formatJson(jsonValue)} language="json" withCopyButton />
-            </ScrollArea>
+            <Box style={{ flex: 1, minHeight: 0 }}>
+              <Editor
+                height="100%"
+                language="json"
+                value={formattedJson}
+                theme={editorTheme}
+                options={{
+                  readOnly: true,
+                  domReadOnly: true,
+                  minimap: { enabled: false },
+                  automaticLayout: true,
+                  scrollBeyondLastLine: false,
+                  fontSize: 13,
+                }}
+              />
+            </Box>
           ) : null}
         </Stack>
       ) : null}

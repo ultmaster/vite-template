@@ -7,7 +7,9 @@ import '../src/styles/app.css';
 
 import { ColorSchemeScript, MantineProvider } from '@mantine/core';
 import { initialize, mswLoader } from 'msw-storybook-addon';
-import { theme } from '../src/theme';
+import { theme as mantineTheme } from '../src/theme';
+
+type ColorSchemeValue = 'light' | 'dark';
 
 initialize({
   onUnhandledRequest: 'bypass',
@@ -42,12 +44,13 @@ export const globalTypes = {
 };
 
 export const decorators = [
-  (renderStory: any, context: any) => {
-    const scheme = (context.globals.theme || 'light') as 'light' | 'dark';
+  (Story: any, context: any) => {
+    const scheme =
+      (context.parameters.theme ?? context.globals.theme ?? 'light') as ColorSchemeValue;
     return (
-      <MantineProvider theme={theme} forceColorScheme={scheme}>
+      <MantineProvider theme={mantineTheme} forceColorScheme={scheme}>
         <ColorSchemeScript />
-        {renderStory()}
+        <Story />
       </MantineProvider>
     );
   },
