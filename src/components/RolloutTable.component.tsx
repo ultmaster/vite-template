@@ -739,23 +739,6 @@ export function RolloutTable({
       ? `Rollouts are temporarily unavailable (status: ${String((error as Record<string, unknown>).status)}).`
       : 'Rollouts are temporarily unavailable.';
 
-  const retryAlert = isError ? (
-    <Alert color="gray" icon={<IconAlertCircle size={16} />} variant="light" radius="md">
-      <Group justify="space-between" align="center" wrap="nowrap">
-        <Text size="sm">{errorMessage}</Text>
-        <Button
-          size="xs"
-          variant="light"
-          color="gray"
-          leftSection={<IconRefresh size={14} />}
-          onClick={onRefetch}
-        >
-          Retry
-        </Button>
-      </Group>
-    </Alert>
-  ) : null;
-
   const emptyState = (
     <Stack gap="sm" align="center" py="lg">
       {isError ? (
@@ -814,61 +797,58 @@ export function RolloutTable({
   );
 
   return (
-    <Stack gap="sm">
-      {retryAlert}
-      <Box ref={tableContainerRef}>
-        <DataTable<RolloutTableRecord>
-          classNames={{ root: 'rollouts-table' }}
-          withTableBorder
-          withColumnBorders
-          highlightOnHover
-          verticalAlign="center"
-          minHeight={paginatedRecords.length === 0 ? 500 : undefined}
-          idAccessor="rolloutId"
-          records={paginatedRecords}
-          columns={responsiveColumns}
-          totalRecords={totalRecords}
-          recordsPerPage={recordsPerPage}
-          page={page}
-          onPageChange={onPageChange}
-          onRecordsPerPageChange={onRecordsPerPageChange}
-          recordsPerPageOptions={recordsPerPageOptions}
-          sortStatus={sortStatus}
-          onSortStatusChange={handleSortStatusChange}
-          fetching={isFetching}
-          loaderSize="sm"
-          emptyState={paginatedRecords.length === 0 ? emptyState : undefined}
-          rowExpansion={
-            renderRowExpansion
-              ? {
-                  allowMultiple: true,
-                  expandable: ({ record }) => record.canExpand,
-                  expanded: {
-                    recordIds: expandedRecordIds,
-                    onRecordIdsChange: (nextRecordIds: SetStateAction<string[]>) => {
-                      setExpandedRecordIds((previous) => {
-                        const resolved =
-                          typeof nextRecordIds === 'function'
-                            ? nextRecordIds(previous)
-                            : ((nextRecordIds ?? []) as (string | number)[]);
-                        return resolved
-                          .map(String)
-                          .filter((id) =>
-                            paginatedRecords.some(
-                              (tableRecord) => tableRecord.rolloutId === id && tableRecord.canExpand
-                            )
-                          );
-                      });
-                    },
+    <Box ref={tableContainerRef}>
+      <DataTable<RolloutTableRecord>
+        classNames={{ root: 'rollouts-table' }}
+        withTableBorder
+        withColumnBorders
+        highlightOnHover
+        verticalAlign="center"
+        minHeight={paginatedRecords.length === 0 ? 500 : undefined}
+        idAccessor="rolloutId"
+        records={paginatedRecords}
+        columns={responsiveColumns}
+        totalRecords={totalRecords}
+        recordsPerPage={recordsPerPage}
+        page={page}
+        onPageChange={onPageChange}
+        onRecordsPerPageChange={onRecordsPerPageChange}
+        recordsPerPageOptions={recordsPerPageOptions}
+        sortStatus={sortStatus}
+        onSortStatusChange={handleSortStatusChange}
+        fetching={isFetching}
+        loaderSize="sm"
+        emptyState={paginatedRecords.length === 0 ? emptyState : undefined}
+        rowExpansion={
+          renderRowExpansion
+            ? {
+                allowMultiple: true,
+                expandable: ({ record }) => record.canExpand,
+                expanded: {
+                  recordIds: expandedRecordIds,
+                  onRecordIdsChange: (nextRecordIds: SetStateAction<string[]>) => {
+                    setExpandedRecordIds((previous) => {
+                      const resolved =
+                        typeof nextRecordIds === 'function'
+                          ? nextRecordIds(previous)
+                          : ((nextRecordIds ?? []) as (string | number)[]);
+                      return resolved
+                        .map(String)
+                        .filter((id) =>
+                          paginatedRecords.some(
+                            (tableRecord) => tableRecord.rolloutId === id && tableRecord.canExpand
+                          )
+                        );
+                    });
                   },
-                  content: ({ record }) =>
-                    renderRowExpansion({ rollout: record, columns: responsiveColumns }),
-                }
-              : undefined
-          }
-        />
-      </Box>
-    </Stack>
+                },
+                content: ({ record }) =>
+                  renderRowExpansion({ rollout: record, columns: responsiveColumns }),
+              }
+            : undefined
+        }
+      />
+    </Box>
   );
 }
 
