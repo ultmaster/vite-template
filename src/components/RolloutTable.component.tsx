@@ -6,6 +6,7 @@ import {
   type ReactNode,
   type SetStateAction,
 } from 'react';
+import { useElementSize } from '@mantine/hooks';
 import {
   IconAlertCircle,
   IconBraces,
@@ -21,6 +22,7 @@ import {
   ActionIcon,
   Alert,
   Badge,
+  Box,
   Button,
   CopyButton,
   Group,
@@ -82,6 +84,25 @@ const ROLLOUT_STATUS_COLORS: Record<RolloutStatus, string> = {
 const ROLLOUT_MODE_OPTIONS: RolloutMode[] = ['train', 'val', 'test'];
 
 const DEFAULT_RECORDS_PER_PAGE_OPTIONS = [50, 100, 200, 500];
+
+type ColumnVisibilityConfig = {
+  minWidth: number;
+  priority: number;
+};
+
+const COLUMN_VISIBILITY: Record<string, ColumnVisibilityConfig> = {
+  rolloutId: { minWidth: 200, priority: 0 },
+  actionsPlaceholder: { minWidth: 120, priority: 0 },
+  inputText: { minWidth: 220, priority: 1 },
+  statusValue: { minWidth: 150, priority: 1 },
+  startTimestamp: { minWidth: 180, priority: 2 },
+  durationSeconds: { minWidth: 150, priority: 2 },
+  attemptId: { minWidth: 180, priority: 3 },
+  resourcesId: { minWidth: 150, priority: 3 },
+  mode: { minWidth: 140, priority: 3 },
+  lastHeartbeatTimestamp: { minWidth: 170, priority: 3 },
+  workerId: { minWidth: 150, priority: 3 },
+};
 
 export type RolloutTableRecord = Rollout & {
   attemptId: string | null;
@@ -574,6 +595,7 @@ export function RolloutTable({
   renderRowExpansion,
 }: RolloutTableProps) {
   const [expandedRecordIds, setExpandedRecordIds] = useState<string[]>([]);
+  const { ref: tableContainerRef, width: containerWidth } = useElementSize();
 
   const rolloutRecords = useMemo<RolloutTableRecord[]>(() => {
     if (!rollouts) {
@@ -605,6 +627,52 @@ export function RolloutTable({
       onViewTraces,
     ]
   );
+
+  const responsiveColumns = useMemo(() => {
+    const measuredWidth = containerWidth ? Math.max(containerWidth - 48, 0) : Number.POSITIVE_INFINITY;
+
+    const columnEntries = columns.map((column, index) => {
+      const accessorKey = String(column.accessor);
+      const config = COLUMN_VISIBILITY[accessorKey] ?? { minWidth: 160, priority: 3 };
+      return {
+        column,
+        index,
+        accessorKey,
+        ...config,
+      };
+    });
+
+    const sortedByPriority = columnEntries
+      .slice()
+      .sort((a, b) =>
+        a.priority === b.priority ? a.index - b.index : a.priority - b.priority
+      );
+
+    const visibleColumnIndices = new Set<number>();
+    let usedWidth = 0;
+
+    sortedByPriority.forEach((entry) => {
+      if (entry.priority === 0) {
+        visibleColumnIndices.add(entry.index);
+        usedWidth += entry.minWidth;
+      }
+    });
+
+    sortedByPriority.forEach((entry) => {
+      if (visibleColumnIndices.has(entry.index)) {
+        return;
+      }
+      if (usedWidth + entry.minWidth <= measuredWidth) {
+        visibleColumnIndices.add(entry.index);
+        usedWidth += entry.minWidth;
+      }
+    });
+
+    return columnEntries.map(({ column, index }) => ({
+      ...column,
+      hidden: !visibleColumnIndices.has(index),
+    }));
+  }, [columns, containerWidth]);
 
   const filteredRecords = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -749,55 +817,58 @@ export function RolloutTable({
       ) : null}
 
       {!isError || totalRecords > 0 ? (
-        <DataTable<RolloutTableRecord>
-          classNames={{ root: 'rollouts-table' }}
-          withTableBorder
-          withColumnBorders
-          highlightOnHover
-          verticalAlign="center"
-          minHeight={paginatedRecords.length === 0 ? 320 : undefined}
-          idAccessor="rolloutId"
-          records={paginatedRecords}
-          columns={columns}
-          totalRecords={totalRecords}
-          recordsPerPage={recordsPerPage}
-          page={page}
-          onPageChange={onPageChange}
-          onRecordsPerPageChange={onRecordsPerPageChange}
-          recordsPerPageOptions={recordsPerPageOptions}
-          sortStatus={sortStatus}
-          onSortStatusChange={handleSortStatusChange}
-          fetching={isFetching && !isLoading}
-          loaderSize="sm"
-          emptyState={paginatedRecords.length === 0 ? emptyState : undefined}
-          rowExpansion={
-            renderRowExpansion
-              ? {
-                  allowMultiple: true,
-                  expandable: ({ record }) => record.canExpand,
-                  expanded: {
-                    recordIds: expandedRecordIds,
-                    onRecordIdsChange: (nextRecordIds: SetStateAction<string[]>) => {
-                      setExpandedRecordIds((previous) => {
-                        const resolved =
-                          typeof nextRecordIds === 'function'
-                            ? nextRecordIds(previous)
-                            : ((nextRecordIds ?? []) as (string | number)[]);
-                        return resolved
-                          .map(String)
-                          .filter((id) =>
-                            paginatedRecords.some(
-                              (tableRecord) => tableRecord.rolloutId === id && tableRecord.canExpand
-                            )
-                          );
-                      });
+        <Box ref={tableContainerRef}>
+          <DataTable<RolloutTableRecord>
+            classNames={{ root: 'rollouts-table' }}
+            withTableBorder
+            withColumnBorders
+            highlightOnHover
+            verticalAlign="center"
+            minHeight={paginatedRecords.length === 0 ? 320 : undefined}
+            idAccessor="rolloutId"
+            records={paginatedRecords}
+            columns={responsiveColumns}
+            totalRecords={totalRecords}
+            recordsPerPage={recordsPerPage}
+            page={page}
+            onPageChange={onPageChange}
+            onRecordsPerPageChange={onRecordsPerPageChange}
+            recordsPerPageOptions={recordsPerPageOptions}
+            sortStatus={sortStatus}
+            onSortStatusChange={handleSortStatusChange}
+            fetching={isFetching && !isLoading}
+            loaderSize="sm"
+            emptyState={paginatedRecords.length === 0 ? emptyState : undefined}
+            rowExpansion={
+              renderRowExpansion
+                ? {
+                    allowMultiple: true,
+                    expandable: ({ record }) => record.canExpand,
+                    expanded: {
+                      recordIds: expandedRecordIds,
+                      onRecordIdsChange: (nextRecordIds: SetStateAction<string[]>) => {
+                        setExpandedRecordIds((previous) => {
+                          const resolved =
+                            typeof nextRecordIds === 'function'
+                              ? nextRecordIds(previous)
+                              : ((nextRecordIds ?? []) as (string | number)[]);
+                          return resolved
+                            .map(String)
+                            .filter((id) =>
+                              paginatedRecords.some(
+                                (tableRecord) => tableRecord.rolloutId === id && tableRecord.canExpand
+                              )
+                            );
+                        });
+                      },
                     },
-                  },
-                  content: ({ record }) => renderRowExpansion({ rollout: record, columns }),
-                }
-              : undefined
-          }
-        />
+                    content: ({ record }) =>
+                      renderRowExpansion({ rollout: record, columns: responsiveColumns }),
+                  }
+                : undefined
+            }
+          />
+        </Box>
       ) : null}
     </Stack>
   );
