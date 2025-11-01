@@ -58,27 +58,40 @@ export function RolloutDrawer() {
 
   const titleContent =
     rolloutId.length > 0 ? (
-      <Group gap={6}>
-        <Text fw={600}>{rolloutId}</Text>
-        <CopyButton value={rolloutId}>
-          {({ copied, copy }) => (
-            <Tooltip label={copied ? 'Copied' : 'Copy'} withArrow>
-              <ActionIcon
-                aria-label={`Copy rollout ID ${rolloutId}`}
-                variant="subtle"
-                color={copied ? 'teal' : 'gray'}
-                size="sm"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  copy();
-                }}
-              >
-                {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
-              </ActionIcon>
-            </Tooltip>
+      <Stack gap={3}>
+        <Group gap={6}>
+          <Text fw={600}>{rolloutId}</Text>
+          <CopyButton value={rolloutId}>
+            {({ copied, copy }) => (
+              <Tooltip label={copied ? 'Copied' : 'Copy'} withArrow>
+                <ActionIcon
+                  aria-label={`Copy rollout ID ${rolloutId}`}
+                  variant="subtle"
+                  color={copied ? 'teal' : 'gray'}
+                  size="sm"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    copy();
+                  }}
+                >
+                  {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </CopyButton>
+        </Group>
+        <Group gap="xs">
+          {attemptId && (
+            <Group gap={3}>
+              <Text size="sm" c="dimmed" fw={500}>Attempt</Text>
+              <Text size="sm" c="dimmed">{attemptId}</Text>
+            </Group>
           )}
-        </CopyButton>
-      </Group>
+          {statusLabel && (
+            <Badge size="sm" variant="light" color={statusBadgeColor}>{statusLabel}</Badge>
+          )}
+        </Group>
+      </Stack>
     ) : null;
 
   const jsonValue =
@@ -104,20 +117,6 @@ export function RolloutDrawer() {
     >
       {content ? (
         <Stack gap="md" h="100%">
-          <Stack gap={2}>
-            <Text size="xs" c="dimmed">
-              Attempt
-            </Text>
-            <Group gap="xs" align="center">
-              <Text size="sm">{attemptId ?? 'N/A'}</Text>
-              {statusLabel ? (
-                <Badge size="sm" variant="light" color={statusBadgeColor}>
-                  {statusLabel}
-                </Badge>
-              ) : null}
-            </Group>
-          </Stack>
-
           {content.type === 'rollout-json' && jsonValue ? (
             <ScrollArea h="100%" type="always">
               <CodeHighlight code={formatJson(jsonValue)} language="json" withCopyButton />
