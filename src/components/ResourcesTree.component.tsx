@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Box, Group, Stack, Text, Tree, type TreeNodeData } from '@mantine/core';
-import { IconAlertCircle, IconChevronDown, IconChevronRight } from '@tabler/icons-react';
+import { IconAlertCircle, IconChevronRight } from '@tabler/icons-react';
 import type { Resources } from '@/types';
 import { safeStringify } from '@/utils/format';
 
@@ -105,11 +105,18 @@ export function ResourcesTree({ resources }: ResourcesTreeProps) {
         renderNode={({ node, expanded, hasChildren, elementProps }) => (
           <Group gap={4} {...elementProps}>
             {hasChildren && (
-              expanded ? (
-                <IconChevronDown size={14} style={{ minWidth: 14 }} />
-              ) : (
-                <IconChevronRight size={14} style={{ minWidth: 14 }} />
-              )
+              <Box
+                style={{
+                  minWidth: 14,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                  transition: 'transform 150ms ease',
+                }}
+              >
+                <IconChevronRight size={14} />
+              </Box>
             )}
             {node.label}
           </Group>
