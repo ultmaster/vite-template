@@ -64,10 +64,7 @@ export function buildResourcesRecord(resources: Resources): ResourcesTableRecord
 
 type ResourcesColumnsOptions = Record<string, never>;
 
-function createResourcesColumns(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _options: ResourcesColumnsOptions
-): DataTableColumn<ResourcesTableRecord>[] {
+function createResourcesColumns(_options: ResourcesColumnsOptions): DataTableColumn<ResourcesTableRecord>[] {
   return [
     {
       accessor: 'resourcesId',

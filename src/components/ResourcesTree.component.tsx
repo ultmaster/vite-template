@@ -4,20 +4,21 @@ import { IconAlertCircle, IconChevronDown, IconChevronRight } from '@tabler/icon
 import type { Resources } from '@/types';
 import { safeStringify } from '@/utils/format';
 
-function convertToTreeData(obj: any, key: string = 'root'): TreeNodeData {
+function convertToTreeData(obj: any, key: string = 'root', parentPath = ''): TreeNodeData {
   const isObject = obj !== null && typeof obj === 'object' && !Array.isArray(obj);
   const isArray = Array.isArray(obj);
+  const currentPath = parentPath ? `${parentPath}.${key}` : key;
 
   if (isObject) {
     const children = Object.entries(obj).map(([childKey, childValue]) =>
-      convertToTreeData(childValue, childKey)
+      convertToTreeData(childValue, childKey, currentPath)
     );
 
     return {
-      value: key,
+      value: currentPath,
       label: (
         <Group gap={6}>
-          <Text size="sm" fw={500} c="blue">
+          <Text size="sm" fw={500}>
             {key}
           </Text>
           <Text size="xs" c="dimmed">
@@ -26,27 +27,19 @@ function convertToTreeData(obj: any, key: string = 'root'): TreeNodeData {
         </Group>
       ),
       children: children.length > 0 ? children : undefined,
-      nodeProps: {
-        icon: (props: any) =>
-          props.hasChildren ? (
-            props.isExpanded ? (
-              <IconChevronDown size={14} />
-            ) : (
-              <IconChevronRight size={14} />
-            )
-          ) : null,
-      },
     };
   }
 
   if (isArray) {
-    const children = obj.map((item: any, index: number) => convertToTreeData(item, `[${index}]`));
+    const children = obj.map((item: any, index: number) =>
+      convertToTreeData(item, `[${index}]`, currentPath)
+    );
 
     return {
-      value: key,
+      value: currentPath,
       label: (
         <Group gap={6}>
-          <Text size="sm" fw={500} c="blue">
+          <Text size="sm" fw={500}>
             {key}
           </Text>
           <Text size="xs" c="dimmed">
@@ -55,25 +48,15 @@ function convertToTreeData(obj: any, key: string = 'root'): TreeNodeData {
         </Group>
       ),
       children: children.length > 0 ? children : undefined,
-      nodeProps: {
-        icon: (props: any) =>
-          props.hasChildren ? (
-            props.isExpanded ? (
-              <IconChevronDown size={14} />
-            ) : (
-              <IconChevronRight size={14} />
-            )
-          ) : null,
-      },
     };
   }
 
   // Primitive value
   return {
-    value: key,
+    value: currentPath,
     label: (
       <Group gap={6}>
-        <Text size="sm" fw={500} c="blue">
+        <Text size="sm" fw={500}>
           {key}:
         </Text>
         <Text size="sm" ff="monospace" c="dimmed">
@@ -119,6 +102,18 @@ export function ResourcesTree({ resources }: ResourcesTreeProps) {
         levelOffset={20}
         expandOnClick
         selectOnClick
+        renderNode={({ node, expanded, hasChildren, elementProps }) => (
+          <Group gap={4} {...elementProps}>
+            {hasChildren && (
+              expanded ? (
+                <IconChevronDown size={14} style={{ minWidth: 14 }} />
+              ) : (
+                <IconChevronRight size={14} style={{ minWidth: 14 }} />
+              )
+            )}
+            {node.label}
+          </Group>
+        )}
       />
     </Box>
   );
