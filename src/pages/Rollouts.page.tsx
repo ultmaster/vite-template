@@ -1,4 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
+import { Skeleton, Stack, TextInput, Title } from '@mantine/core';
+import { IconSearch } from '@tabler/icons-react';
 import type { DataTableColumn, DataTableSortStatus } from 'mantine-datatable';
 
 import { RolloutAttemptsTable, RolloutTable, type RolloutTableRecord } from '@/components/RolloutTable.component';
@@ -24,6 +26,7 @@ import {
   useGetRolloutsQuery,
 } from '@/features/rollouts';
 import { openDrawer } from '@/features/ui/drawer';
+import { hideAlert, showAlert } from '@/features/ui/alert';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 
 function RolloutAttemptsContent({
@@ -183,32 +186,77 @@ export function RolloutsPage() {
     [dispatch],
   );
 
+  const hasRollouts = Array.isArray(rolloutsData) && rolloutsData.length > 0;
+  const showSkeleton = isLoading && !hasRollouts;
+
+  useEffect(() => {
+    if (isError) {
+      dispatch(
+        showAlert({
+          id: 'rollouts-fetch',
+          message: 'Unable to refresh rollouts. The list below may be out of date until the connection recovers.',
+          tone: 'error',
+        })
+      );
+      return;
+    }
+
+    if (!isLoading && !isFetching) {
+      dispatch(hideAlert({ id: 'rollouts-fetch' }));
+    }
+  }, [dispatch, isError, isFetching, isLoading]);
+
+  useEffect(
+    () => () => {
+      dispatch(hideAlert({ id: 'rollouts-fetch' }));
+    },
+    [dispatch]
+  );
+
   return (
-    <RolloutTable
-      rollouts={rolloutsData}
-      isLoading={isLoading}
-      isFetching={isFetching}
-      isError={isError}
-      error={error}
-      searchTerm={searchTerm}
-      statusFilters={statusFilters}
-      modeFilters={modeFilters}
-      sort={sort}
-      page={page}
-      recordsPerPage={recordsPerPage}
-      onSearchTermChange={handleSearchTermChange}
-      onStatusFilterChange={handleStatusFilterChange}
-      onStatusFilterReset={handleStatusFilterReset}
-      onModeFilterChange={handleModeFilterChange}
-      onModeFilterReset={handleModeFilterReset}
-      onSortStatusChange={handleSortStatusChange}
-      onPageChange={handlePageChange}
-      onRecordsPerPageChange={handleRecordsPerPageChange}
-      onResetFilters={handleResetFilters}
-      onRefetch={refetch}
-      onViewRawJson={handleViewRawJson}
-      onViewTraces={handleViewTraces}
-      renderRowExpansion={({ rollout, columns }) => <RolloutAttemptsContent rollout={rollout} columns={columns} />}
-    />
+    <Stack gap="md">
+      <Title order={1}>Rollouts</Title>
+
+      <TextInput
+        placeholder="Search by Rollout ID"
+        value={searchTerm}
+        onChange={(event) => handleSearchTermChange(event.currentTarget.value)}
+        leftSection={<IconSearch size={16} />}
+        data-testid="rollouts-search-input"
+        w="100%"
+        style={{ maxWidth: 360 }}
+      />
+
+      {showSkeleton ? (
+        <Skeleton height={360} radius="md" />
+      ) : (
+        <RolloutTable
+          rollouts={rolloutsData}
+          isFetching={isFetching}
+          isError={isError}
+          error={error}
+          searchTerm={searchTerm}
+          statusFilters={statusFilters}
+          modeFilters={modeFilters}
+          sort={sort}
+          page={page}
+          recordsPerPage={recordsPerPage}
+          onStatusFilterChange={handleStatusFilterChange}
+          onStatusFilterReset={handleStatusFilterReset}
+          onModeFilterChange={handleModeFilterChange}
+          onModeFilterReset={handleModeFilterReset}
+          onSortStatusChange={handleSortStatusChange}
+          onPageChange={handlePageChange}
+          onRecordsPerPageChange={handleRecordsPerPageChange}
+          onResetFilters={handleResetFilters}
+          onRefetch={refetch}
+          onViewRawJson={handleViewRawJson}
+          onViewTraces={handleViewTraces}
+          renderRowExpansion={({ rollout, columns }) => (
+            <RolloutAttemptsContent rollout={rollout} columns={columns} />
+          )}
+        />
+      )}
+    </Stack>
   );
 }

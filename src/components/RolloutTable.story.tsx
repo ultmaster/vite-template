@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { Box } from '@mantine/core';
+import { Box, Stack, TextInput, Title } from '@mantine/core';
+import { IconSearch } from '@tabler/icons-react';
 import { RolloutTable } from './RolloutTable.component';
 import type { Rollout, RolloutMode, RolloutStatus } from '@/types';
 import type { RolloutsSortState } from '@/features/rollouts';
@@ -146,9 +147,19 @@ const sampleRollouts: Rollout[] = [
 
 type WrapperProps = {
   maxWidth: number;
+  rollouts?: Rollout[] | undefined;
+  isFetching?: boolean;
+  isError?: boolean;
+  error?: unknown;
 };
 
-function RolloutTableStoryWrapper({ maxWidth }: WrapperProps) {
+function RolloutTableStoryWrapper({
+  maxWidth,
+  rollouts = sampleRollouts,
+  isFetching = false,
+  isError = false,
+  error = null,
+}: WrapperProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilters, setStatusFilters] = useState<RolloutStatus[]>([]);
   const [modeFilters, setModeFilters] = useState<RolloutMode[]>([]);
@@ -161,51 +172,66 @@ function RolloutTableStoryWrapper({ maxWidth }: WrapperProps) {
 
   return (
     <Box mx="auto" style={{ maxWidth, width: '100%', padding: 16 }}>
-      <RolloutTable
-        rollouts={sampleRollouts}
-        isLoading={false}
-        isFetching={false}
-        isError={false}
-        error={null}
-        searchTerm={searchTerm}
-        statusFilters={statusFilters}
-        modeFilters={modeFilters}
-        sort={sort}
-        page={page}
-        recordsPerPage={recordsPerPage}
-        onSearchTermChange={setSearchTerm}
-        onStatusFilterChange={(values) => {
-          setStatusFilters(values);
-          setPage(1);
-        }}
-        onStatusFilterReset={() => {
-          setStatusFilters([]);
-          setPage(1);
-        }}
-        onModeFilterChange={(values) => {
-          setModeFilters(values);
-          setPage(1);
-        }}
-        onModeFilterReset={() => {
-          setModeFilters([]);
-          setPage(1);
-        }}
-        onSortStatusChange={setSort}
-        onPageChange={setPage}
-        onRecordsPerPageChange={(value) => {
-          setRecordsPerPage(value);
-          setPage(1);
-        }}
-        onResetFilters={() => {
-          setSearchTerm('');
-          setStatusFilters([]);
-          setModeFilters([]);
-          setSort({ column: 'startTimestamp', direction: 'desc' });
-          setPage(1);
-        }}
-        onRefetch={() => undefined}
-        recordsPerPageOptions={[5, 10, 20]}
-      />
+      <Stack gap="md">
+        <Title order={2}>Rollouts</Title>
+        <TextInput
+          placeholder="Search by Rollout ID"
+          value={searchTerm}
+          onChange={(event) => setSearchTerm(event.currentTarget.value)}
+          leftSection={<IconSearch size={16} />}
+          data-testid="rollouts-search-input"
+          w="100%"
+          style={{ maxWidth: 360 }}
+        />
+        <RolloutTable
+          rollouts={rollouts}
+          isFetching={isFetching}
+          isError={isError}
+          error={error}
+          searchTerm={searchTerm}
+          statusFilters={statusFilters}
+          modeFilters={modeFilters}
+          sort={sort}
+          page={page}
+          recordsPerPage={recordsPerPage}
+          onStatusFilterChange={(values) => {
+            setStatusFilters(values);
+            setPage(1);
+          }}
+          onStatusFilterReset={() => {
+            setStatusFilters([]);
+            setPage(1);
+          }}
+          onModeFilterChange={(values) => {
+            setModeFilters(values);
+            setPage(1);
+          }}
+          onModeFilterReset={() => {
+            setModeFilters([]);
+            setPage(1);
+          }}
+          onSortStatusChange={(status) => {
+            setSort({
+              column: status.columnAccessor as string,
+              direction: status.direction,
+            });
+          }}
+          onPageChange={setPage}
+          onRecordsPerPageChange={(value) => {
+            setRecordsPerPage(value);
+            setPage(1);
+          }}
+          onResetFilters={() => {
+            setSearchTerm('');
+            setStatusFilters([]);
+            setModeFilters([]);
+            setSort({ column: 'startTimestamp', direction: 'desc' });
+            setPage(1);
+          }}
+          onRefetch={() => undefined}
+          recordsPerPageOptions={[5, 10, 20]}
+        />
+      </Stack>
     </Box>
   );
 }
@@ -224,4 +250,15 @@ export const NarrowContainer: Story = {
 
 export const DrawerWidth: Story = {
   render: () => <RolloutTableStoryWrapper maxWidth={520} />,
+};
+
+export const ErrorState: Story = {
+  render: () => (
+    <RolloutTableStoryWrapper
+      maxWidth={600}
+      rollouts={[]}
+      isError
+      error={new Error('Network unreachable')}
+    />
+  ),
 };

@@ -571,17 +571,14 @@ export const AutoExpandedAttempt: Story = {
     const canvas = within(canvasElement);
     await canvas.findByText('ro-auto-expand');
 
-    const toggleButton =
-      canvas.queryByRole('button', { name: /toggle row/i }) ??
-      canvas.queryByRole('button', { name: /expand/i }) ??
-      canvas.queryByRole('button', { name: /show details/i }) ??
-      (canvasElement.querySelector('table tbody button') as HTMLButtonElement | null);
+    const rolloutCell = canvas.getByText('ro-auto-expand');
+    const rolloutRow = rolloutCell.closest('tr');
 
-    if (!toggleButton) {
-      throw new Error('Unable to locate row expansion toggle button');
+    if (!rolloutRow) {
+      throw new Error('Unable to locate the rollout row for expansion');
     }
 
-    await userEvent.click(toggleButton);
+    await userEvent.click(rolloutRow);
     await canvas.findByText('at-expand-001');
   },
 };

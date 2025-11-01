@@ -14,7 +14,6 @@ import {
   IconCopy,
   IconRefresh,
   IconReload,
-  IconSearch,
   IconTimeline,
 } from '@tabler/icons-react';
 import { DataTable, type DataTableColumn, type DataTableSortStatus } from 'mantine-datatable';
@@ -27,11 +26,8 @@ import {
   CopyButton,
   Group,
   MultiSelect,
-  Skeleton,
   Stack,
   Text,
-  TextInput,
-  Title,
   Tooltip,
 } from '@mantine/core';
 import {
@@ -541,7 +537,6 @@ type RowExpansionRenderer = (context: {
 
 export type RolloutTableProps = {
   rollouts: Rollout[] | undefined;
-  isLoading: boolean;
   isFetching: boolean;
   isError: boolean;
   error: unknown;
@@ -551,7 +546,6 @@ export type RolloutTableProps = {
   sort: RolloutsSortState;
   page: number;
   recordsPerPage: number;
-  onSearchTermChange: (value: string) => void;
   onStatusFilterChange: (values: RolloutStatus[]) => void;
   onStatusFilterReset: () => void;
   onModeFilterChange: (values: RolloutMode[]) => void;
@@ -569,7 +563,6 @@ export type RolloutTableProps = {
 
 export function RolloutTable({
   rollouts,
-  isLoading,
   isFetching,
   isError,
   error,
@@ -579,7 +572,6 @@ export function RolloutTable({
   sort,
   page,
   recordsPerPage,
-  onSearchTermChange,
   onStatusFilterChange,
   onStatusFilterReset,
   onModeFilterChange,
@@ -742,134 +734,140 @@ export function RolloutTable({
     [onSortStatusChange]
   );
 
-  if (isLoading) {
-    return (
-      <Stack gap="md">
-        <Title order={1}>Rollouts</Title>
-        <Skeleton height={36} radius="sm" />
-        <Skeleton height={40} radius="sm" />
-        <Skeleton height={360} radius="md" />
-      </Stack>
-    );
-  }
-
   const errorMessage =
     isError && error && typeof error === 'object' && 'status' in (error as Record<string, unknown>)
-      ? `Unable to load rollouts (status: ${String((error as Record<string, unknown>).status)}).`
-      : 'Unable to load rollouts.';
+      ? `Rollouts are temporarily unavailable (status: ${String((error as Record<string, unknown>).status)}).`
+      : 'Rollouts are temporarily unavailable.';
 
-  const emptyState = (
-    <Stack gap="sm" align="center" py="xl">
-      <Text fw={600} size="sm">
-        No rollouts found
-      </Text>
-      <Text size="sm" c="dimmed" ta="center">
-        {hasActiveFilters
-          ? 'Try adjusting the search or filters to see more results.'
-          : 'Try refreshing to fetch the latest rollouts.'}
-      </Text>
-      <Group gap="xs">
+  const retryAlert = isError ? (
+    <Alert color="gray" icon={<IconAlertCircle size={16} />} variant="light" radius="md">
+      <Group justify="space-between" align="center" wrap="nowrap">
+        <Text size="sm">{errorMessage}</Text>
         <Button
           size="xs"
           variant="light"
+          color="gray"
           leftSection={<IconRefresh size={14} />}
           onClick={onRefetch}
         >
-          Refresh
+          Retry
         </Button>
-        {hasActiveFilters ? (
-          <Button size="xs" variant="subtle" onClick={onResetFilters}>
-            Clear filters
-          </Button>
-        ) : null}
       </Group>
-    </Stack>
-  );
+    </Alert>
+  ) : null;
 
-  return (
-    <Stack gap="md">
-      <Title order={1}>Rollouts</Title>
-
-      <TextInput
-        placeholder="Search by Rollout ID"
-        value={searchTerm}
-        onChange={(event) => onSearchTermChange(event.currentTarget.value)}
-        leftSection={<IconSearch size={16} />}
-        data-testid="rollouts-search-input"
-        w="100%"
-        style={{ maxWidth: 360 }}
-      />
-
-      {isError && !totalRecords ? (
-        <Alert color="red" icon={<IconAlertCircle size={18} />} variant="light">
-          <Group justify="space-between" align="center">
-            <Text size="sm">{errorMessage}</Text>
+  const emptyState = (
+    <Stack gap="sm" align="center" py="lg">
+      {isError ? (
+        <>
+          <Text fw={600} size="sm">
+            {errorMessage}
+          </Text>
+          <Text size="sm" c="dimmed" ta="center">
+            Use the retry button to try again, or adjust the filters to broaden the results.
+          </Text>
+          <Group gap="xs">
+            <Button
+              size="xs"
+              variant="light"
+              color="gray"
+              leftSection={<IconRefresh size={14} />}
+              onClick={onRefetch}
+            >
+              Retry
+            </Button>
+            {hasActiveFilters ? (
+              <Button size="xs" variant="subtle" onClick={onResetFilters}>
+                Clear filters
+              </Button>
+            ) : null}
+          </Group>
+        </>
+      ) : (
+        <>
+          <Text fw={600} size="sm">
+            No rollouts found
+          </Text>
+          <Text size="sm" c="dimmed" ta="center">
+            {hasActiveFilters
+              ? 'Try adjusting the search or filters to see more results.'
+              : 'Try refreshing to fetch the latest rollouts.'}
+          </Text>
+          <Group gap="xs">
             <Button
               size="xs"
               variant="light"
               leftSection={<IconRefresh size={14} />}
               onClick={onRefetch}
             >
-              Retry
+              Refresh
             </Button>
+            {hasActiveFilters ? (
+              <Button size="xs" variant="subtle" onClick={onResetFilters}>
+                Clear filters
+              </Button>
+            ) : null}
           </Group>
-        </Alert>
-      ) : null}
+        </>
+      )}
+    </Stack>
+  );
 
-      {!isError || totalRecords > 0 ? (
-        <Box ref={tableContainerRef}>
-          <DataTable<RolloutTableRecord>
-            classNames={{ root: 'rollouts-table' }}
-            withTableBorder
-            withColumnBorders
-            highlightOnHover
-            verticalAlign="center"
-            minHeight={paginatedRecords.length === 0 ? 320 : undefined}
-            idAccessor="rolloutId"
-            records={paginatedRecords}
-            columns={responsiveColumns}
-            totalRecords={totalRecords}
-            recordsPerPage={recordsPerPage}
-            page={page}
-            onPageChange={onPageChange}
-            onRecordsPerPageChange={onRecordsPerPageChange}
-            recordsPerPageOptions={recordsPerPageOptions}
-            sortStatus={sortStatus}
-            onSortStatusChange={handleSortStatusChange}
-            fetching={isFetching && !isLoading}
-            loaderSize="sm"
-            emptyState={paginatedRecords.length === 0 ? emptyState : undefined}
-            rowExpansion={
-              renderRowExpansion
-                ? {
-                    allowMultiple: true,
-                    expandable: ({ record }) => record.canExpand,
-                    expanded: {
-                      recordIds: expandedRecordIds,
-                      onRecordIdsChange: (nextRecordIds: SetStateAction<string[]>) => {
-                        setExpandedRecordIds((previous) => {
-                          const resolved =
-                            typeof nextRecordIds === 'function'
-                              ? nextRecordIds(previous)
-                              : ((nextRecordIds ?? []) as (string | number)[]);
-                          return resolved
-                            .map(String)
-                            .filter((id) =>
-                              paginatedRecords.some(
-                                (tableRecord) => tableRecord.rolloutId === id && tableRecord.canExpand
-                              )
-                            );
-                        });
-                      },
+  return (
+    <Stack gap="sm">
+      {retryAlert}
+      <Box ref={tableContainerRef}>
+        <DataTable<RolloutTableRecord>
+          classNames={{ root: 'rollouts-table' }}
+          withTableBorder
+          withColumnBorders
+          highlightOnHover
+          verticalAlign="center"
+          minHeight={paginatedRecords.length === 0 ? 500 : undefined}
+          idAccessor="rolloutId"
+          records={paginatedRecords}
+          columns={responsiveColumns}
+          totalRecords={totalRecords}
+          recordsPerPage={recordsPerPage}
+          page={page}
+          onPageChange={onPageChange}
+          onRecordsPerPageChange={onRecordsPerPageChange}
+          recordsPerPageOptions={recordsPerPageOptions}
+          sortStatus={sortStatus}
+          onSortStatusChange={handleSortStatusChange}
+          fetching={isFetching}
+          loaderSize="sm"
+          emptyState={paginatedRecords.length === 0 ? emptyState : undefined}
+          rowExpansion={
+            renderRowExpansion
+              ? {
+                  allowMultiple: true,
+                  expandable: ({ record }) => record.canExpand,
+                  expanded: {
+                    recordIds: expandedRecordIds,
+                    onRecordIdsChange: (nextRecordIds: SetStateAction<string[]>) => {
+                      setExpandedRecordIds((previous) => {
+                        const resolved =
+                          typeof nextRecordIds === 'function'
+                            ? nextRecordIds(previous)
+                            : ((nextRecordIds ?? []) as (string | number)[]);
+                        return resolved
+                          .map(String)
+                          .filter((id) =>
+                            paginatedRecords.some(
+                              (tableRecord) => tableRecord.rolloutId === id && tableRecord.canExpand
+                            )
+                          );
+                      });
                     },
-                    content: ({ record }) =>
-                      renderRowExpansion({ rollout: record, columns: responsiveColumns }),
-                  }
-                : undefined
-            }
-          />
-        </Box>
-      ) : null}
+                  },
+                  content: ({ record }) =>
+                    renderRowExpansion({ rollout: record, columns: responsiveColumns }),
+                }
+              : undefined
+          }
+        />
+      </Box>
     </Stack>
   );
 }

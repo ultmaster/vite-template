@@ -1,11 +1,13 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { configReducer } from '../features/config';
 import { drawerReducer } from '../features/ui/drawer';
+import { alertReducer } from '../features/ui/alert';
 import { rolloutsReducer, rolloutsApi } from '../features/rollouts';
 
 const rootReducer = combineReducers({
   config: configReducer,
   drawer: drawerReducer,
+  alert: alertReducer,
   rollouts: rolloutsReducer,
   [rolloutsApi.reducerPath]: rolloutsApi.reducer,
 });
