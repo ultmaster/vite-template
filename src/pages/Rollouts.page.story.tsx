@@ -593,7 +593,16 @@ export const RawJsonDrawer: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByText('ro-7fa3b6e2');
-    const rawButton = await canvas.findByRole('button', { name: 'View raw JSON' });
+    const rolloutCell = canvas.getByText('ro-7fa3b6e2');
+    const rolloutRow = rolloutCell.closest('tr');
+
+    if (!rolloutRow) {
+      throw new Error('Unable to locate rollout row for raw JSON drawer');
+    }
+
+    const rowScope = within(rolloutRow);
+    const rawButtons = rowScope.getAllByRole('button', { name: 'View raw JSON' });
+    const rawButton = rawButtons[0];
     await userEvent.click(rawButton);
 
     const drawer = await within(document.body).findByRole('dialog', { name: 'ro-7fa3b6e2' });
@@ -612,7 +621,16 @@ export const TracesDrawer: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByText('ro-7fa3b6e2');
-    const tracesButton = await canvas.findByRole('button', { name: 'View traces' });
+    const rolloutCell = canvas.getByText('ro-7fa3b6e2');
+    const rolloutRow = rolloutCell.closest('tr');
+
+    if (!rolloutRow) {
+      throw new Error('Unable to locate rollout row for traces drawer');
+    }
+
+    const rowScope = within(rolloutRow);
+    const traceButtons = rowScope.getAllByRole('button', { name: 'View traces' });
+    const tracesButton = traceButtons[0];
     await userEvent.click(tracesButton);
 
     await within(document.body).findByRole('dialog', { name: 'ro-7fa3b6e2' });
