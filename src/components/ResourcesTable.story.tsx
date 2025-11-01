@@ -232,5 +232,5 @@ export const EmptyResources: Story = {
 };
 
 export const LoadingState: Story = {
-  render: () => <ResourcesTableStoryWrapper maxWidth={960} isFetching />,
+  render: () => <ResourcesTableStoryWrapper maxWidth={960} resourcesList={[]} isFetching />,
 };
