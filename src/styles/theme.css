@@ -422,6 +422,13 @@
   }
 }
 
+/* NOTE(yuge): hot-fix for notification background color */
+[data-mantine-color-scheme="light"] {
+  .mantine-Notification-root {
+    background-color: var(--mantine-primary-color-light);
+  }
+}
+
 /* Progress */
 .mantine-Progress-root {
   background-color: var(--mantine-color-default-hover);

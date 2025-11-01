@@ -1,7 +1,10 @@
 import { Stack, Text } from '@mantine/core';
 import type { Meta, StoryObj } from '@storybook/react';
+import { Provider } from 'react-redux';
 import { http, HttpResponse } from 'msw';
 import { RouterProvider, createMemoryRouter } from 'react-router-dom';
+import { createAppStore } from '@/store';
+import type { AlertsState, AlertTone } from '@/features/ui/alert';
 import { AppLayoutProps, AppLayout } from './AppLayout';
 
 const Placeholder = ({ title, description }: { title: string; description: string }) => (
@@ -45,7 +48,24 @@ const ROUTES = [
   },
 ];
 
-function renderAppLayout(args: AppLayoutProps, initialEntry = '/rollouts') {
+function createAlertState(message: string, tone: AlertTone): AlertsState {
+  return {
+    alerts: [
+      {
+        id: 'storybook-alert',
+        message,
+        tone,
+        isVisible: true,
+        createdAt: Date.now(),
+      },
+    ],
+  };
+}
+
+function renderAppLayout(args: AppLayoutProps, initialEntry = '/rollouts', alertState?: AlertsState) {
+  const store = createAppStore({
+    alert: alertState ?? { alerts: [] },
+  });
   const router = createMemoryRouter(
     ROUTES.map((route) => ({
       ...route,
@@ -54,7 +74,11 @@ function renderAppLayout(args: AppLayoutProps, initialEntry = '/rollouts') {
     { initialEntries: [initialEntry] },
   );
 
-  return <RouterProvider router={router} />;
+  return (
+    <Provider store={store}>
+      <RouterProvider router={router} />
+    </Provider>
+  );
 }
 
 const meta: Meta<AppLayoutProps> = {
@@ -136,4 +160,31 @@ export const PollingEveryFiveSeconds: Story = {
       ],
     },
   },
+};
+
+export const InfoAlertActive: Story = {
+  render: (args) =>
+    renderAppLayout(
+      args,
+      '/rollouts',
+      createAlertState('Background synchronization completed successfully.', 'info'),
+    ),
+};
+
+export const WarningAlertActive: Story = {
+  render: (args) =>
+    renderAppLayout(
+      args,
+      '/rollouts',
+      createAlertState('Rollout data may be stale. Check connectivity before proceeding.', 'warning'),
+    ),
+};
+
+export const ErrorAlertActive: Story = {
+  render: (args) =>
+    renderAppLayout(
+      args,
+      '/rollouts',
+      createAlertState('Unable to reach Agent-lightning API. Retry or adjust server settings.', 'error'),
+    ),
 };
