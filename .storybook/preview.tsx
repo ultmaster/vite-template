@@ -5,6 +5,7 @@ import 'mantine-datatable/styles.css';
 import '../src/styles/theme.css';
 import '../src/styles/app.css';
 
+import { shadcnCssVariableResolver } from '../src/cssVariableResolver';
 import { ColorSchemeScript, MantineProvider } from '@mantine/core';
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { theme as mantineTheme } from '../src/theme';
@@ -48,7 +49,7 @@ export const decorators = [
     const scheme =
       (context.parameters.theme ?? context.globals.theme ?? 'light') as ColorSchemeValue;
     return (
-      <MantineProvider theme={mantineTheme} forceColorScheme={scheme}>
+      <MantineProvider theme={mantineTheme} cssVariablesResolver={shadcnCssVariableResolver} forceColorScheme={scheme}>
         <ColorSchemeScript />
         <Story />
       </MantineProvider>

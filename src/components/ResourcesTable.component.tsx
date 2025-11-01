@@ -1,0 +1,447 @@
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+  type SetStateAction,
+} from 'react';
+import { useElementSize } from '@mantine/hooks';
+import {
+  IconBraces,
+  IconCheck,
+  IconCopy,
+  IconRefresh,
+} from '@tabler/icons-react';
+import { DataTable, type DataTableColumn, type DataTableSortStatus } from 'mantine-datatable';
+import {
+  ActionIcon,
+  Box,
+  Button,
+  CopyButton,
+  Group,
+  Stack,
+  Text,
+  Tooltip,
+} from '@mantine/core';
+import type { Resources } from '@/types';
+
+const DEFAULT_RECORDS_PER_PAGE_OPTIONS = [50, 100, 200, 500];
+
+type ColumnVisibilityConfig = {
+  minWidth: number;
+  priority: number;
+};
+
+const COLUMN_VISIBILITY: Record<string, ColumnVisibilityConfig> = {
+  resourcesId: { minWidth: 200, priority: 0 },
+  resourceCount: { minWidth: 150, priority: 1 },
+  actionsPlaceholder: { minWidth: 120, priority: 0 },
+};
+
+export type ResourcesTableRecord = Resources & {
+  resourceCount: number;
+  canExpand: boolean;
+  actionsPlaceholder?: null;
+};
+
+export function buildResourcesRecord(resources: Resources): ResourcesTableRecord {
+  const resourceCount = Object.keys(resources.resources ?? {}).length;
+
+  return {
+    ...resources,
+    resourceCount,
+    canExpand: resourceCount > 0,
+    actionsPlaceholder: null,
+  };
+}
+
+type ResourcesColumnsOptions = {
+  onViewRawJson?: (record: ResourcesTableRecord) => void;
+};
+
+function createResourcesColumns({
+  onViewRawJson,
+}: ResourcesColumnsOptions): DataTableColumn<ResourcesTableRecord>[] {
+  return [
+    {
+      accessor: 'resourcesId',
+      title: 'Resources ID',
+      sortable: true,
+      render: ({ resourcesId }) => (
+        <Group gap={2}>
+          <Text fw={500} size="sm">
+            {resourcesId}
+          </Text>
+          <CopyButton value={resourcesId}>
+            {({ copied, copy }) => (
+              <Tooltip label={copied ? 'Copied' : 'Copy'} withArrow>
+                <ActionIcon
+                  aria-label={`Copy resources ID ${resourcesId}`}
+                  variant="subtle"
+                  color={copied ? 'teal' : 'gray'}
+                  size="sm"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    copy();
+                  }}
+                >
+                  {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </CopyButton>
+        </Group>
+      ),
+      width: '14em',
+    },
+    {
+      accessor: 'resourceCount',
+      title: 'Resource Count',
+      sortable: true,
+      textAlign: 'left',
+      width: '10em',
+      render: ({ resourceCount }) => <Text size="sm">{resourceCount}</Text>,
+    },
+    {
+      accessor: 'actionsPlaceholder',
+      title: 'Actions',
+      width: '6.5em',
+      render: (record) => (
+        <Group gap={4}>
+          <Tooltip label="View raw JSON" withArrow disabled={!onViewRawJson}>
+            <ActionIcon
+              aria-label="View raw JSON"
+              variant="subtle"
+              color="gray"
+              onClick={(event) => {
+                event.stopPropagation();
+                onViewRawJson?.(record);
+              }}
+            >
+              <IconBraces size={16} />
+            </ActionIcon>
+          </Tooltip>
+        </Group>
+      ),
+    },
+  ];
+}
+
+type ComparatorKey = keyof Pick<ResourcesTableRecord, 'resourcesId' | 'resourceCount'>;
+
+function compareRecords(
+  a: ResourcesTableRecord,
+  b: ResourcesTableRecord,
+  key: ComparatorKey
+): number {
+  const valueA = a[key];
+  const valueB = b[key];
+
+  if (valueA === valueB) {
+    return 0;
+  }
+
+  if (valueA === null || valueA === undefined) {
+    return 1;
+  }
+
+  if (valueB === null || valueB === undefined) {
+    return -1;
+  }
+
+  if (typeof valueA === 'number' && typeof valueB === 'number') {
+    return valueA - valueB;
+  }
+
+  return String(valueA).localeCompare(String(valueB));
+}
+
+type RowExpansionRenderer = (context: {
+  resources: Resources;
+  columns: DataTableColumn<ResourcesTableRecord>[];
+}) => ReactNode;
+
+export type ResourcesTableProps = {
+  resourcesList: Resources[] | undefined;
+  isFetching: boolean;
+  isError: boolean;
+  error: unknown;
+  searchTerm: string;
+  sort: { column: string; direction: 'asc' | 'desc' };
+  page: number;
+  recordsPerPage: number;
+  onSortStatusChange: (status: DataTableSortStatus<ResourcesTableRecord>) => void;
+  onPageChange: (page: number) => void;
+  onRecordsPerPageChange: (value: number) => void;
+  onResetFilters: () => void;
+  onRefetch: () => void;
+  onViewRawJson?: (record: ResourcesTableRecord) => void;
+  recordsPerPageOptions?: number[];
+  renderRowExpansion?: RowExpansionRenderer;
+};
+
+export function ResourcesTable({
+  resourcesList,
+  isFetching,
+  isError,
+  error,
+  searchTerm,
+  sort,
+  page,
+  recordsPerPage,
+  onSortStatusChange,
+  onPageChange,
+  onRecordsPerPageChange,
+  onResetFilters,
+  onRefetch,
+  onViewRawJson,
+  recordsPerPageOptions = DEFAULT_RECORDS_PER_PAGE_OPTIONS,
+  renderRowExpansion,
+}: ResourcesTableProps) {
+  const [expandedRecordIds, setExpandedRecordIds] = useState<string[]>([]);
+  const { ref: tableContainerRef, width: containerWidth } = useElementSize();
+
+  const resourcesRecords = useMemo<ResourcesTableRecord[]>(() => {
+    if (!resourcesList) {
+      return [];
+    }
+    return resourcesList.map((resourcesItem) => buildResourcesRecord(resourcesItem));
+  }, [resourcesList]);
+
+  const columns = useMemo(
+    () =>
+      createResourcesColumns({
+        onViewRawJson,
+      }),
+    [onViewRawJson]
+  );
+
+  const responsiveColumns = useMemo(() => {
+    const measuredWidth = containerWidth
+      ? Math.max(containerWidth - 48, 0)
+      : Number.POSITIVE_INFINITY;
+
+    const columnEntries = columns.map((column, index) => {
+      const accessorKey = String(column.accessor);
+      const config = COLUMN_VISIBILITY[accessorKey] ?? { minWidth: 160, priority: 3 };
+      return {
+        column,
+        index,
+        accessorKey,
+        ...config,
+      };
+    });
+
+    const sortedByPriority = columnEntries
+      .slice()
+      .sort((a, b) =>
+        a.priority === b.priority ? a.index - b.index : a.priority - b.priority
+      );
+
+    const visibleColumnIndices = new Set<number>();
+    let usedWidth = 0;
+
+    sortedByPriority.forEach((entry) => {
+      if (entry.priority === 0) {
+        visibleColumnIndices.add(entry.index);
+        usedWidth += entry.minWidth;
+      }
+    });
+
+    sortedByPriority.forEach((entry) => {
+      if (visibleColumnIndices.has(entry.index)) {
+        return;
+      }
+      if (usedWidth + entry.minWidth <= measuredWidth) {
+        visibleColumnIndices.add(entry.index);
+        usedWidth += entry.minWidth;
+      }
+    });
+
+    return columnEntries.map(({ column, index }) => ({
+      ...column,
+      hidden: !visibleColumnIndices.has(index),
+    }));
+  }, [columns, containerWidth]);
+
+  const filteredRecords = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    return resourcesRecords.filter((record) => {
+      const matchesSearch =
+        normalizedSearch.length === 0 ||
+        record.resourcesId.toLowerCase().includes(normalizedSearch);
+
+      return matchesSearch;
+    });
+  }, [resourcesRecords, searchTerm]);
+
+  const sortedRecords = useMemo(() => {
+    const sorted = filteredRecords.slice();
+    const { column, direction } = sort;
+    const comparatorKey = column as ComparatorKey;
+    if (!sorted.length || !(comparatorKey in sorted[0])) {
+      return sorted;
+    }
+    sorted.sort((a, b) => compareRecords(a, b, comparatorKey));
+    if (direction === 'desc') {
+      sorted.reverse();
+    }
+    return sorted;
+  }, [filteredRecords, sort]);
+
+  const totalRecords = sortedRecords.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / recordsPerPage));
+
+  useEffect(() => {
+    if (page > totalPages) {
+      onPageChange(totalPages);
+    }
+  }, [onPageChange, page, totalPages]);
+
+  const paginatedRecords = useMemo(() => {
+    const startIndex = (page - 1) * recordsPerPage;
+    const endIndex = startIndex + recordsPerPage;
+    return sortedRecords.slice(startIndex, endIndex);
+  }, [page, recordsPerPage, sortedRecords]);
+
+  useEffect(() => {
+    setExpandedRecordIds((current) =>
+      current.filter((id) =>
+        paginatedRecords.some((record) => record.resourcesId === id && record.canExpand)
+      )
+    );
+  }, [paginatedRecords]);
+
+  const hasActiveFilters = searchTerm.trim().length > 0;
+
+  const sortStatus: DataTableSortStatus<ResourcesTableRecord> = {
+    columnAccessor: sort.column,
+    direction: sort.direction,
+  };
+
+  const handleSortStatusChange = useCallback(
+    (status: DataTableSortStatus<ResourcesTableRecord>) => {
+      onSortStatusChange(status);
+    },
+    [onSortStatusChange]
+  );
+
+  const errorMessage =
+    isError && error && typeof error === 'object' && 'status' in (error as Record<string, unknown>)
+      ? `Resources are temporarily unavailable (status: ${String((error as Record<string, unknown>).status)}).`
+      : 'Resources are temporarily unavailable.';
+
+  const emptyState = (
+    <Stack gap="sm" align="center" py="lg">
+      {isError ? (
+        <>
+          <Text fw={600} size="sm">
+            {errorMessage}
+          </Text>
+          <Text size="sm" c="dimmed" ta="center">
+            Use the retry button to try again, or adjust the filters to broaden the results.
+          </Text>
+          <Group gap="xs">
+            <Button
+              size="xs"
+              variant="light"
+              color="gray"
+              leftSection={<IconRefresh size={14} />}
+              onClick={onRefetch}
+            >
+              Retry
+            </Button>
+            {hasActiveFilters ? (
+              <Button size="xs" variant="subtle" onClick={onResetFilters}>
+                Clear filters
+              </Button>
+            ) : null}
+          </Group>
+        </>
+      ) : (
+        <>
+          <Text fw={600} size="sm">
+            No resources found
+          </Text>
+          <Text size="sm" c="dimmed" ta="center">
+            {hasActiveFilters
+              ? 'Try adjusting the search to see more results.'
+              : 'Try refreshing to fetch the latest resources.'}
+          </Text>
+          <Group gap="xs">
+            <Button
+              size="xs"
+              variant="light"
+              leftSection={<IconRefresh size={14} />}
+              onClick={onRefetch}
+            >
+              Refresh
+            </Button>
+            {hasActiveFilters ? (
+              <Button size="xs" variant="subtle" onClick={onResetFilters}>
+                Clear filters
+              </Button>
+            ) : null}
+          </Group>
+        </>
+      )}
+    </Stack>
+  );
+
+  return (
+    <Box ref={tableContainerRef}>
+      <DataTable<ResourcesTableRecord>
+        classNames={{ root: 'resources-table' }}
+        withTableBorder
+        withColumnBorders
+        highlightOnHover
+        verticalAlign="center"
+        minHeight={paginatedRecords.length === 0 ? 500 : undefined}
+        idAccessor="resourcesId"
+        records={paginatedRecords}
+        columns={responsiveColumns}
+        totalRecords={totalRecords}
+        recordsPerPage={recordsPerPage}
+        page={page}
+        onPageChange={onPageChange}
+        onRecordsPerPageChange={onRecordsPerPageChange}
+        recordsPerPageOptions={recordsPerPageOptions}
+        sortStatus={sortStatus}
+        onSortStatusChange={handleSortStatusChange}
+        fetching={isFetching}
+        loaderSize="sm"
+        emptyState={paginatedRecords.length === 0 ? emptyState : undefined}
+        rowExpansion={
+          renderRowExpansion
+            ? {
+                allowMultiple: true,
+                expandable: ({ record }) => record.canExpand,
+                expanded: {
+                  recordIds: expandedRecordIds,
+                  onRecordIdsChange: (nextRecordIds: SetStateAction<string[]>) => {
+                    setExpandedRecordIds((previous) => {
+                      const resolved =
+                        typeof nextRecordIds === 'function'
+                          ? nextRecordIds(previous)
+                          : ((nextRecordIds ?? []) as (string | number)[]);
+                      return resolved
+                        .map(String)
+                        .filter((id) =>
+                          paginatedRecords.some(
+                            (tableRecord) => tableRecord.resourcesId === id && tableRecord.canExpand
+                          )
+                        );
+                    });
+                  },
+                },
+                content: ({ record }) =>
+                  renderRowExpansion({ resources: record, columns: responsiveColumns }),
+              }
+            : undefined
+        }
+      />
+    </Box>
+  );
+}
