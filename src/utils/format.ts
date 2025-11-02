@@ -19,7 +19,7 @@ export function clampToNow(start: number | null, end: number | null): number | n
 
 export function formatDateTime(timestamp: number | null): string {
   if (timestamp == null) {
-    return 'N/A';
+    return '—';
   }
 
   return dayjs(timestamp * 1000).format('YYYY-MM-DD HH:mm:ss');
@@ -27,12 +27,12 @@ export function formatDateTime(timestamp: number | null): string {
 
 export function formatDuration(seconds: number | null): string {
   if (seconds == null) {
-    return 'N/A';
+    return '—';
   }
 
   const total = Math.floor(seconds);
   if (total <= 0) {
-    return 'N/A';
+    return '—';
   }
 
   const hours = Math.floor(total / 3600);
@@ -55,7 +55,7 @@ export function formatDuration(seconds: number | null): string {
 
 export function formatRelativeTime(timestamp: number | null): string {
   if (timestamp == null) {
-    return 'N/A';
+    return '—';
   }
 
   const now = Date.now() / 1000;
@@ -80,7 +80,7 @@ export function formatInputPreview(
   maxLength = 35,
 ): { preview: string; full: string } {
   if (input === null || input === undefined) {
-    return { preview: 'N/A', full: 'N/A' };
+    return { preview: '—', full: '—' };
   }
 
   const serialized = typeof input === 'string' ? input : safeStringify(input);

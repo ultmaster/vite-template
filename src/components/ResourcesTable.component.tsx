@@ -45,11 +45,11 @@ export type ResourcesTableRecord = Resources & {
   resourcesPreview: string;
 };
 
-export function buildResourcesRecord(resources: Resources): ResourcesTableRecord {
+function buildResourcesRecord(resources: Resources): ResourcesTableRecord {
   const resourceCount = Object.keys(resources.resources ?? {}).length;
   const resourcesValue =
     resources.resources === null || typeof resources.resources === 'undefined'
-      ? 'N/A'
+      ? '—'
       : typeof resources.resources === 'string'
         ? resources.resources
         : safeStringify(resources.resources);

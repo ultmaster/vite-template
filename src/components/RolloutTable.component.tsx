@@ -127,7 +127,7 @@ export function buildRolloutRecord(rollout: Rollout): RolloutTableRecord {
   const latestAttempt = rollout.attempt;
   const inputValue =
     rollout.input === null || typeof rollout.input === 'undefined'
-      ? 'N/A'
+      ? '—'
       : typeof rollout.input === 'string'
         ? rollout.input
         : safeStringify(rollout.input);
@@ -162,7 +162,7 @@ export function buildRolloutRecord(rollout: Rollout): RolloutTableRecord {
 function buildAttemptRecord(rollout: Rollout, attempt: Attempt): RolloutTableRecord {
   const inputValue =
     rollout.input === null || typeof rollout.input === 'undefined'
-      ? 'N/A'
+      ? '—'
       : typeof rollout.input === 'string'
         ? rollout.input
         : safeStringify(rollout.input);
@@ -271,7 +271,7 @@ function createRolloutColumns({
       render: ({ attemptId, attemptSequence, isNested }) => (
         <Group gap={2}>
           <Text size="sm" c={attemptId ? undefined : 'dimmed'}>
-            {attemptId ?? 'N/A'}
+            {attemptId ?? '—'}
           </Text>
           {attemptId && (
             <CopyButton value={attemptId}>
@@ -370,7 +370,7 @@ function createRolloutColumns({
       width: '8em',
       render: ({ resourcesId }) => (
         <Text size="sm" c={resourcesId ? undefined : 'dimmed'}>
-          {resourcesId ?? 'N/A'}
+          {resourcesId ?? '—'}
         </Text>
       ),
     },
@@ -408,7 +408,7 @@ function createRolloutColumns({
       filtering: modeFilters.length > 0,
       render: ({ mode }) => (
         <Text size="sm" c={mode ? undefined : 'dimmed'}>
-          {mode ?? 'N/A'}
+          {mode ?? '—'}
         </Text>
       ),
     },
@@ -438,7 +438,7 @@ function createRolloutColumns({
         if (!attempt && isNested) {
           return (
             <Text size="sm" c="dimmed">
-              N/A
+              —
             </Text>
           );
         }
@@ -452,7 +452,7 @@ function createRolloutColumns({
       width: '10em',
       render: ({ workerId }) => (
         <Text size="sm" c={workerId ? undefined : 'dimmed'}>
-          {workerId ?? 'N/A'}
+          {workerId ?? '—'}
         </Text>
       ),
     },
