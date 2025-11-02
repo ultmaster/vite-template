@@ -276,7 +276,7 @@ export function AppDrawer() {
       size="lg"
       opened={isOpen}
       onClose={handleClose}
-      overlayProps={{ opacity: 0.5, blur: 4 }}
+      overlayProps={{ opacity: 0.5 }}
       withinPortal
       styles={{
         content: {
