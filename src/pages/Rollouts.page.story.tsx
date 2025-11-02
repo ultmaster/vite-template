@@ -8,6 +8,7 @@ import { AppDrawer } from '@/components/AppDrawer.component';
 import { createAppStore } from '../store';
 import { initialConfigState } from '../features/config/slice';
 import { initialRolloutsUiState, type RolloutsUiState } from '../features/rollouts/slice';
+import { initialResourcesUiState } from '../features/resources/slice';
 import type { Attempt, Rollout } from '../features/rollouts';
 import { snakeCaseKeys } from '@/utils/format';
 
@@ -580,6 +581,7 @@ function renderWithStore(uiOverrides?: Partial<RolloutsUiState>) {
       ...initialRolloutsUiState,
       ...uiOverrides,
     },
+    resources: initialResourcesUiState,
   });
 
   return (

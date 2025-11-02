@@ -5,6 +5,7 @@ import { camelCaseKeys } from '@/utils/format';
 import type {
   Attempt,
   PaginatedResponse,
+  Resources,
   Rollout,
   RolloutMode,
   RolloutStatus,
@@ -102,6 +103,17 @@ const normalizeSpan = (value: unknown): Span => {
   };
 };
 
+const normalizeResources = (value: unknown): Resources => {
+  const camelized = camelCaseKeys(value) as Resources;
+  return {
+    resourcesId: camelized.resourcesId,
+    version: camelized.version,
+    createTime: camelized.createTime,
+    updateTime: camelized.updateTime,
+    resources: camelized.resources ?? {},
+  };
+};
+
 const normalizePaginatedResponse = <T>(
   value: unknown,
   normalizer: (item: unknown) => T,
@@ -158,6 +170,14 @@ export type GetRolloutsQueryArgs = {
   modeIn?: RolloutMode[];
 };
 
+export type GetResourcesQueryArgs = {
+  limit: number;
+  offset: number;
+  sortBy?: string | null;
+  sortOrder?: 'asc' | 'desc';
+  resourcesIdContains?: string | null;
+};
+
 export type GetRolloutAttemptsQueryArgs = {
   rolloutId: string;
   limit?: number;
@@ -182,8 +202,36 @@ export type GetSpansQueryArgs = {
 export const rolloutsApi = createApi({
   reducerPath: 'rolloutsApi',
   baseQuery: dynamicBaseQuery,
-  tagTypes: ['Rollout', 'Span'],
+  tagTypes: ['Rollout', 'Span', 'Resources'],
   endpoints: (builder) => ({
+    getResources: builder.query<PaginatedResponse<Resources>, GetResourcesQueryArgs>({
+      query: ({ limit, offset, sortBy, sortOrder, resourcesIdContains }) => {
+        const searchParams = new URLSearchParams();
+        searchParams.set('limit', String(typeof limit === 'number' ? limit : -1));
+        searchParams.set('offset', String(typeof offset === 'number' ? offset : 0));
+        if (sortBy) {
+          searchParams.set('sort_by', sortBy);
+        }
+        if (sortOrder) {
+          searchParams.set('sort_order', sortOrder);
+        }
+        if (resourcesIdContains && resourcesIdContains.trim().length > 0) {
+          searchParams.set('resources_id_contains', resourcesIdContains.trim());
+        }
+
+        const queryString = searchParams.toString();
+        const url = queryString.length > 0 ? `agl/v1/resources?${queryString}` : 'agl/v1/resources';
+        return { url, method: 'GET' };
+      },
+      transformResponse: (response: unknown) => normalizePaginatedResponse(response, normalizeResources),
+      providesTags: (result) =>
+        result
+          ? [
+              { type: 'Resources' as const, id: 'LIST' },
+              ...result.items.map((item) => ({ type: 'Resources' as const, id: item.resourcesId })),
+            ]
+          : [{ type: 'Resources' as const, id: 'LIST' }],
+    }),
     getRollouts: builder.query<PaginatedResponse<Rollout>, GetRolloutsQueryArgs>({
       query: ({
         limit,
@@ -295,4 +343,9 @@ export const rolloutsApi = createApi({
   }),
 });
 
-export const { useGetRolloutsQuery, useGetRolloutAttemptsQuery, useGetSpansQuery } = rolloutsApi;
+export const {
+  useGetResourcesQuery,
+  useGetRolloutsQuery,
+  useGetRolloutAttemptsQuery,
+  useGetSpansQuery,
+} = rolloutsApi;

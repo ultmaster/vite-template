@@ -5,6 +5,7 @@ import { createAppStore } from '@/store';
 import { initialConfigState } from '@/features/config/slice';
 import { initialRolloutsUiState } from '@/features/rollouts/slice';
 import { initialTracesUiState } from '@/features/traces/slice';
+import { initialResourcesUiState } from '@/features/resources/slice';
 import type { Attempt, Rollout, Span } from '@/types';
 import type { DrawerContent } from '@/features/ui/drawer';
 
@@ -94,6 +95,7 @@ function renderWithDrawer(content: DrawerContent) {
   const store = createAppStore({
     config: initialConfigState,
     rollouts: initialRolloutsUiState,
+    resources: initialResourcesUiState,
     traces: initialTracesUiState,
     drawer: {
       isOpen: true,

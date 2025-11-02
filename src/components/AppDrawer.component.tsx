@@ -69,13 +69,13 @@ export function AppDrawer() {
     dispatch(closeDrawer());
   };
 
-  if (!content) {
-    return null;
-  }
-
   const editorTheme = colorScheme === 'dark' ? 'vs-dark' : 'vs-light';
 
-  const { titleContent, heading, bodyContent } = useMemo(() => {
+  const derivedContent = useMemo(() => {
+    if (!content) {
+      return null;
+    }
+
     if (content.type === 'trace-detail') {
       const span = content.span;
       const spanStatusCode = span.status?.status_code ?? null;
@@ -238,8 +238,8 @@ export function AppDrawer() {
     const body =
       jsonValue !== null
         ? (
-          <Box style={{ flex: 1, minHeight: 0 }}>
-            <Editor
+            <Box style={{ flex: 1, minHeight: 0 }}>
+              <Editor
               height="100%"
               language="json"
               value={formatJson(jsonValue)}
@@ -263,6 +263,12 @@ export function AppDrawer() {
       bodyContent: body,
     };
   }, [content, editorTheme]);
+
+  if (!content || !derivedContent) {
+    return null;
+  }
+
+  const { titleContent, heading, bodyContent } = derivedContent;
 
   return (
     <Drawer

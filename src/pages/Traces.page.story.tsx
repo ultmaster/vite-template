@@ -6,6 +6,7 @@ import { AppDrawer } from '@/components/AppDrawer.component';
 import { createAppStore } from '../store';
 import { initialConfigState } from '../features/config/slice';
 import { initialRolloutsUiState } from '../features/rollouts/slice';
+import { initialResourcesUiState } from '../features/resources/slice';
 import { initialTracesUiState, type TracesUiState } from '../features/traces/slice';
 import type { Attempt, Rollout, Span } from '../types';
 import { snakeCaseKeys } from '@/utils/format';
@@ -488,6 +489,7 @@ function renderTracesPage(preloadedTracesState?: Partial<TracesUiState>) {
   const store = createAppStore({
     config: initialConfigState,
     rollouts: initialRolloutsUiState,
+    resources: initialResourcesUiState,
     traces: { ...initialTracesUiState, ...preloadedTracesState },
   });
 

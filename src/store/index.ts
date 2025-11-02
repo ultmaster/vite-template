@@ -3,6 +3,7 @@ import { configReducer } from '../features/config';
 import { drawerReducer } from '../features/ui/drawer';
 import { alertReducer } from '../features/ui/alert';
 import { rolloutsReducer, rolloutsApi } from '../features/rollouts';
+import { resourcesReducer } from '../features/resources';
 import { tracesReducer } from '../features/traces';
 
 const rootReducer = combineReducers({
@@ -10,6 +11,7 @@ const rootReducer = combineReducers({
   drawer: drawerReducer,
   alert: alertReducer,
   rollouts: rolloutsReducer,
+  resources: resourcesReducer,
   traces: tracesReducer,
   [rolloutsApi.reducerPath]: rolloutsApi.reducer,
 });

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Box, Stack, TextInput, Title } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
@@ -158,6 +158,63 @@ function ResourcesTableStoryWrapper({
     direction: 'asc',
   });
 
+  const baseResources = resourcesList ?? [];
+
+  const filteredResources = useMemo(() => {
+    const normalized = searchTerm.trim().toLowerCase();
+    if (normalized.length === 0) {
+      return baseResources;
+    }
+    return baseResources.filter((resource) => resource.resourcesId.toLowerCase().includes(normalized));
+  }, [baseResources, searchTerm]);
+
+  const sortedResources = useMemo(() => {
+    const items = filteredResources.slice();
+    const resolveSortValue = (resource: Resources, column: string) => {
+      switch (column) {
+        case 'version':
+          return resource.version;
+        case 'createTime':
+          return resource.createTime;
+        case 'updateTime':
+          return resource.updateTime;
+        case 'resourceCount':
+          return Object.keys(resource.resources ?? {}).length;
+        case 'resourcesId':
+        default:
+          return resource.resourcesId;
+      }
+    };
+
+    items.sort((a, b) => {
+      const aValue = resolveSortValue(a, sort.column);
+      const bValue = resolveSortValue(b, sort.column);
+
+      if (aValue === bValue) {
+        return 0;
+      }
+
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return aValue - bValue;
+      }
+
+      return String(aValue).localeCompare(String(bValue));
+    });
+
+    if (sort.direction === 'desc') {
+      items.reverse();
+    }
+
+    return items;
+  }, [filteredResources, sort]);
+
+  const totalRecordsValue = sortedResources.length;
+
+  const pagedResources = useMemo(() => {
+    const startIndex = (page - 1) * recordsPerPage;
+    return sortedResources.slice(startIndex, startIndex + recordsPerPage);
+  }, [page, recordsPerPage, sortedResources]);
+
   return (
     <Box mx="auto" style={{ maxWidth, width: '100%', padding: 16 }}>
       <Stack gap="md">
@@ -165,14 +222,18 @@ function ResourcesTableStoryWrapper({
         <TextInput
           placeholder="Search by Resources ID"
           value={searchTerm}
-          onChange={(event) => setSearchTerm(event.currentTarget.value)}
+          onChange={(event) => {
+            setSearchTerm(event.currentTarget.value);
+            setPage(1);
+          }}
           leftSection={<IconSearch size={16} />}
           data-testid="resources-search-input"
           w="100%"
           style={{ maxWidth: 360 }}
         />
         <ResourcesTable
-          resourcesList={resourcesList}
+          resourcesList={pagedResources}
+          totalRecords={totalRecordsValue}
           isFetching={isFetching}
           isError={isError}
           error={error}

@@ -26,7 +26,6 @@ import {
 import type { Resources } from '@/types';
 import { formatDateTime, safeStringify } from '@/utils/format';
 import {
-  compareRecords,
   createResponsiveColumns,
   type ColumnVisibilityConfig,
 } from '@/utils/table';
@@ -139,11 +138,6 @@ function createResourcesColumns(_options: ResourcesColumnsOptions): DataTableCol
   ];
 }
 
-type ComparatorKey = keyof Pick<
-  ResourcesTableRecord,
-  'resourcesId' | 'version' | 'createTime' | 'updateTime' | 'resourceCount'
->;
-
 type RowExpansionRenderer = (context: {
   resources: Resources;
   columns: DataTableColumn<ResourcesTableRecord>[];
@@ -151,6 +145,7 @@ type RowExpansionRenderer = (context: {
 
 export type ResourcesTableProps = {
   resourcesList: Resources[] | undefined;
+  totalRecords: number;
   isFetching: boolean;
   isError: boolean;
   error: unknown;
@@ -169,6 +164,7 @@ export type ResourcesTableProps = {
 
 export function ResourcesTable({
   resourcesList,
+  totalRecords,
   isFetching,
   isError,
   error,
@@ -201,34 +197,10 @@ export function ResourcesTable({
     [columns, containerWidth]
   );
 
-  const filteredRecords = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-
-    return resourcesRecords.filter((record) => {
-      const matchesSearch =
-        normalizedSearch.length === 0 ||
-        record.resourcesId.toLowerCase().includes(normalizedSearch);
-
-      return matchesSearch;
-    });
-  }, [resourcesRecords, searchTerm]);
-
-  const sortedRecords = useMemo(() => {
-    const sorted = filteredRecords.slice();
-    const { column, direction } = sort;
-    const comparatorKey = column as ComparatorKey;
-    if (!sorted.length || !(comparatorKey in sorted[0])) {
-      return sorted;
-    }
-    sorted.sort((a, b) => compareRecords(a, b, comparatorKey));
-    if (direction === 'desc') {
-      sorted.reverse();
-    }
-    return sorted;
-  }, [filteredRecords, sort]);
-
-  const totalRecords = sortedRecords.length;
-  const totalPages = Math.max(1, Math.ceil(totalRecords / recordsPerPage));
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(Math.max(0, totalRecords) / Math.max(1, recordsPerPage))),
+    [recordsPerPage, totalRecords],
+  );
 
   useEffect(() => {
     if (page > totalPages) {
@@ -236,19 +208,13 @@ export function ResourcesTable({
     }
   }, [onPageChange, page, totalPages]);
 
-  const paginatedRecords = useMemo(() => {
-    const startIndex = (page - 1) * recordsPerPage;
-    const endIndex = startIndex + recordsPerPage;
-    return sortedRecords.slice(startIndex, endIndex);
-  }, [page, recordsPerPage, sortedRecords]);
-
   useEffect(() => {
     setExpandedRecordIds((current) =>
       current.filter((id) =>
-        paginatedRecords.some((record) => record.resourcesId === id && record.canExpand)
+        resourcesRecords.some((record) => record.resourcesId === id && record.canExpand)
       )
     );
-  }, [paginatedRecords]);
+  }, [resourcesRecords]);
 
   const hasActiveFilters = searchTerm.trim().length > 0;
 
@@ -334,9 +300,9 @@ export function ResourcesTable({
         withColumnBorders
         highlightOnHover
         verticalAlign="center"
-        minHeight={paginatedRecords.length === 0 ? 500 : undefined}
+        minHeight={resourcesRecords.length === 0 ? 500 : undefined}
         idAccessor="resourcesId"
-        records={paginatedRecords}
+        records={resourcesRecords}
         columns={responsiveColumns}
         totalRecords={totalRecords}
         recordsPerPage={recordsPerPage}
@@ -348,7 +314,7 @@ export function ResourcesTable({
         onSortStatusChange={handleSortStatusChange}
         fetching={isFetching}
         loaderSize="sm"
-        emptyState={paginatedRecords.length === 0 ? emptyState : undefined}
+        emptyState={resourcesRecords.length === 0 ? emptyState : undefined}
         rowExpansion={
           renderRowExpansion
             ? {
@@ -365,7 +331,7 @@ export function ResourcesTable({
                       return resolved
                         .map(String)
                         .filter((id) =>
-                          paginatedRecords.some(
+                          resourcesRecords.some(
                             (tableRecord) => tableRecord.resourcesId === id && tableRecord.canExpand
                           )
                         );
