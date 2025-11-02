@@ -46,8 +46,8 @@ import type { Attempt, Rollout, Span } from '@/types';
 
 const VIEW_OPTIONS = [
   { value: 'table', label: 'Table View', disabled: false },
-  { value: 'waterfall', label: 'Waterfall View', disabled: true },
-  { value: 'tree', label: 'Tree View', disabled: true },
+  { value: 'waterfall', label: 'Waterfall View (Coming Soon)', disabled: true },
+  { value: 'tree', label: 'Tree View (Coming Soon)', disabled: true },
 ] as const;
 
 type ViewOptionValue = (typeof VIEW_OPTIONS)[number]['value'];
