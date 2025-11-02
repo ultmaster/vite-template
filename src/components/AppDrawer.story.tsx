@@ -1,23 +1,24 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { Provider } from 'react-redux';
-import { RolloutDrawer } from './RolloutDrawer.component';
+import { AppDrawer } from './AppDrawer.component';
 import { createAppStore } from '@/store';
 import { initialConfigState } from '@/features/config/slice';
 import { initialRolloutsUiState } from '@/features/rollouts/slice';
-import type { Attempt, Rollout } from '@/types';
+import { initialTracesUiState } from '@/features/traces/slice';
+import type { Attempt, Rollout, Span } from '@/types';
 import type { DrawerContent } from '@/features/ui/drawer';
 
-const meta: Meta<typeof RolloutDrawer> = {
-  title: 'Components/RolloutDrawer',
-  component: RolloutDrawer,
+const meta = {
+  title: 'Components/AppDrawer',
+  component: AppDrawer,
   parameters: {
     layout: 'fullscreen',
   },
-};
+} satisfies Meta<typeof AppDrawer>;
 
 export default meta;
 
-type Story = StoryObj<typeof RolloutDrawer>;
+type Story = StoryObj<typeof AppDrawer>;
 
 const now = Math.floor(Date.now() / 1000);
 
@@ -66,10 +67,34 @@ const mismatchRollout: Rollout = {
   },
 };
 
+const sampleSpan: Span = {
+  rolloutId: 'ro-story-001',
+  attemptId: 'at-story-001',
+  sequenceId: 2,
+  traceId: 'tr-story-001',
+  spanId: 'sp-story-001',
+  parentId: null,
+  name: 'Fetch Resources',
+  status: { status_code: 'OK', description: 'Completed successfully' },
+  attributes: {
+    'http.method': 'GET',
+    'http.url': 'https://api.example.com/resources',
+    duration_ms: 120,
+  },
+  startTime: now - 240,
+  endTime: now - 120,
+  events: [],
+  links: [],
+  context: {},
+  parent: null,
+  resource: {},
+};
+
 function renderWithDrawer(content: DrawerContent) {
   const store = createAppStore({
     config: initialConfigState,
     rollouts: initialRolloutsUiState,
+    traces: initialTracesUiState,
     drawer: {
       isOpen: true,
       content,
@@ -78,12 +103,12 @@ function renderWithDrawer(content: DrawerContent) {
 
   return (
     <Provider store={store}>
-      <RolloutDrawer />
+      <AppDrawer />
     </Provider>
   );
 }
 
-export const RawRolloutJson: Story = {
+export const RolloutJson: Story = {
   render: () =>
     renderWithDrawer({
       type: 'rollout-json',
@@ -140,6 +165,16 @@ export const StatusMismatch: Story = {
     }),
 };
 
+export const SpanDetail: Story = {
+  render: () =>
+    renderWithDrawer({
+      type: 'trace-detail',
+      span: sampleSpan,
+      rollout: mismatchRollout,
+      attempt: mismatchRollout.attempt,
+    }),
+};
+
 export const LightTheme: Story = {
   render: () =>
     renderWithDrawer({
@@ -156,10 +191,15 @@ export const LightTheme: Story = {
 export const DarkTheme: Story = {
   render: () =>
     renderWithDrawer({
-      type: 'rollout-json',
+      type: 'trace-detail',
+      span: {
+        ...sampleSpan,
+        spanId: 'sp-story-002',
+        name: 'Process Response',
+        status: { status_code: 'ERROR', description: 'Unexpected response code' },
+      },
       rollout: mismatchRollout,
       attempt: mismatchRollout.attempt,
-      isNested: false,
     }),
   parameters: {
     theme: 'dark',

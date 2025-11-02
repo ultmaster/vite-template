@@ -2,7 +2,7 @@ import { AppShell, Badge, Group, Image, NavLink as MantineNavLink, Stack, Text }
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { NavLink as RouterNavLink, Outlet, useLocation } from 'react-router-dom';
 import { selectConfig } from '../features/config';
-import { RolloutDrawer } from '@/components/RolloutDrawer.component';
+import { AppDrawer } from '@/components/AppDrawer.component';
 import { AppAlertBanner } from '@/components/AppAlertBanner';
 import { useAppSelector } from '../store/hooks';
 import faviconUrl from '../favicon.svg';
@@ -223,7 +223,7 @@ export function AppLayoutWithState() {
           autoRefreshMs: config.autoRefreshMs,
         }}
       />
-      <RolloutDrawer />
+      <AppDrawer />
     </>
   );
 }

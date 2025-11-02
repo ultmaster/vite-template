@@ -1,9 +1,399 @@
-import { Stack, Title } from '@mantine/core';
+import { useCallback, useEffect, useMemo } from 'react';
+import { skipToken } from '@reduxjs/toolkit/query';
+import {
+  Button,
+  Group,
+  Menu,
+  Select,
+  Skeleton,
+  Stack,
+  TextInput,
+  Title,
+} from '@mantine/core';
+import { IconCheck, IconChevronDown, IconSearch } from '@tabler/icons-react';
+import type { DataTableSortStatus } from 'mantine-datatable';
+
+import { TracesTable, type TracesTableRecord } from '@/components/TracesTable.component';
+import { selectAutoRefreshMs } from '@/features/config';
+import {
+  resetTracesFilters,
+  selectTracesAttemptId,
+  selectTracesPage,
+  selectTracesRecordsPerPage,
+  selectTracesRolloutId,
+  selectTracesSearchTerm,
+  selectTracesSort,
+  selectTracesViewMode,
+  setTracesAttemptId,
+  setTracesPage,
+  setTracesRecordsPerPage,
+  setTracesRolloutId,
+  setTracesSearchTerm,
+  setTracesSort,
+  setTracesViewMode,
+} from '@/features/traces';
+import {
+  useGetRolloutsQuery,
+  useGetRolloutAttemptsQuery,
+  useGetSpansQuery,
+} from '@/features/rollouts';
+import { openDrawer } from '@/features/ui/drawer';
+import { formatStatusLabel } from '@/utils/format';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import type { Attempt, Rollout } from '@/types';
+
+const VIEW_OPTIONS = [
+  { value: 'table', label: 'Table View', disabled: false },
+  { value: 'waterfall', label: 'Waterfall View', disabled: true },
+  { value: 'tree', label: 'Tree View', disabled: true },
+] as const;
+
+type ViewOptionValue = (typeof VIEW_OPTIONS)[number]['value'];
+
+function getLatestAttempt(attempts: Attempt[]): Attempt | null {
+  if (!attempts.length) {
+    return null;
+  }
+  return [...attempts].sort((a, b) => a.sequenceId - b.sequenceId).at(-1) ?? null;
+}
+
+function findRollout(rollouts: Rollout[] | undefined, rolloutId: string | null): Rollout | null {
+  if (!rollouts || !rolloutId) {
+    return null;
+  }
+  return rollouts.find((rollout) => rollout.rolloutId === rolloutId) ?? null;
+}
 
 export function TracesPage() {
+  const dispatch = useAppDispatch();
+  const autoRefreshMs = useAppSelector(selectAutoRefreshMs);
+  const rolloutId = useAppSelector(selectTracesRolloutId);
+  const attemptId = useAppSelector(selectTracesAttemptId);
+  const searchTerm = useAppSelector(selectTracesSearchTerm);
+  const page = useAppSelector(selectTracesPage);
+  const recordsPerPage = useAppSelector(selectTracesRecordsPerPage);
+  const sort = useAppSelector(selectTracesSort);
+  const viewMode = useAppSelector(selectTracesViewMode);
+
+  const {
+    data: rolloutsData,
+    isLoading: rolloutsLoading,
+    isFetching: rolloutsFetching,
+  } = useGetRolloutsQuery(undefined, {
+    pollingInterval: autoRefreshMs > 0 ? autoRefreshMs : undefined,
+  });
+
+  const selectedRollout = useMemo(
+    () => findRollout(rolloutsData, rolloutId),
+    [rolloutsData, rolloutId],
+  );
+
+  const {
+    data: attemptsData,
+    isFetching: attemptsFetching,
+  } = useGetRolloutAttemptsQuery(rolloutId ?? skipToken, {
+    pollingInterval: autoRefreshMs > 0 ? autoRefreshMs : undefined,
+  });
+
+  const spansArgs =
+    rolloutId != null
+      ? { rolloutId, attemptId: attemptId ?? undefined }
+      : skipToken;
+  const {
+    data: spansData,
+    isFetching: spansFetching,
+    isError: spansIsError,
+    error: spansError,
+    refetch: refetchSpans,
+  } = useGetSpansQuery(spansArgs, {
+    pollingInterval: autoRefreshMs > 0 ? autoRefreshMs : undefined,
+  });
+
+  useEffect(() => {
+    if (!rolloutsData) {
+      return;
+    }
+    if (rolloutsData.length === 0) {
+      if (rolloutId !== null) {
+        dispatch(setTracesRolloutId(null));
+      }
+      return;
+    }
+    const rolloutExists = rolloutId
+      ? rolloutsData.some((rollout) => rollout.rolloutId === rolloutId)
+      : false;
+    if (!rolloutExists) {
+      dispatch(setTracesRolloutId(rolloutsData[0].rolloutId));
+    }
+  }, [dispatch, rolloutsData, rolloutId]);
+
+  useEffect(() => {
+    if (!rolloutId) {
+      if (attemptId !== null) {
+        dispatch(setTracesAttemptId(null));
+      }
+      return;
+    }
+
+    if (attemptsData && attemptsData.length > 0) {
+      const hasSelected = attemptId
+        ? attemptsData.some((attempt) => attempt.attemptId === attemptId)
+        : false;
+      if (!hasSelected) {
+        const latest = getLatestAttempt(attemptsData);
+        if (latest && latest.attemptId !== attemptId) {
+          dispatch(setTracesAttemptId(latest.attemptId));
+        }
+      }
+      return;
+    }
+
+    const fallbackAttemptId = selectedRollout?.attempt?.attemptId ?? null;
+    if (fallbackAttemptId !== attemptId) {
+      dispatch(setTracesAttemptId(fallbackAttemptId));
+    }
+  }, [attemptsData, attemptId, dispatch, rolloutId, selectedRollout]);
+
+  const rolloutOptions = useMemo(
+    () =>
+      (rolloutsData ?? []).map((rollout) => ({
+        value: rollout.rolloutId,
+        label: rollout.rolloutId,
+      })),
+    [rolloutsData],
+  );
+
+  const attemptOptions = useMemo(() => {
+    if (attemptsData && attemptsData.length > 0) {
+      return [...attemptsData]
+        .sort((a, b) => b.sequenceId - a.sequenceId)
+        .map((attempt) => ({
+          value: attempt.attemptId,
+          label: `Attempt ${attempt.sequenceId} (${attempt.attemptId}) - ${formatStatusLabel(attempt.status)}`,
+        }));
+    }
+    if (selectedRollout?.attempt) {
+      const attempt = selectedRollout.attempt;
+      return [
+        {
+          value: attempt.attemptId,
+          label: `Attempt ${attempt.sequenceId} (${attempt.attemptId}) - ${formatStatusLabel(attempt.status)}`,
+        },
+      ];
+    }
+    return [];
+  }, [attemptsData, selectedRollout]);
+
+  const spans = spansData ?? [];
+  const recordsPerPageOptions = [50, 100, 200, 500];
+  const isInitialLoading = rolloutsLoading && !rolloutsData;
+  const isFetching = spansFetching || rolloutsFetching || attemptsFetching;
+
+  const handleSearchTermChange = useCallback(
+    (value: string) => {
+      dispatch(setTracesSearchTerm(value));
+    },
+    [dispatch],
+  );
+
+  const handleSortStatusChange = useCallback(
+    (status: DataTableSortStatus<TracesTableRecord>) => {
+      dispatch(
+        setTracesSort({
+          column: status.columnAccessor as string,
+          direction: status.direction,
+        }),
+      );
+    },
+    [dispatch],
+  );
+
+  const handlePageChange = useCallback(
+    (nextPage: number) => {
+      dispatch(setTracesPage(nextPage));
+    },
+    [dispatch],
+  );
+
+  const handleRecordsPerPageChange = useCallback(
+    (value: number) => {
+      dispatch(setTracesRecordsPerPage(value));
+    },
+    [dispatch],
+  );
+
+  const handleResetFilters = useCallback(() => {
+    dispatch(resetTracesFilters());
+  }, [dispatch]);
+
+  const handleRefetch = useCallback(() => {
+    if (rolloutId) {
+      void refetchSpans();
+    }
+  }, [refetchSpans, rolloutId]);
+
+  const handleShowRollout = useCallback(
+    (record: TracesTableRecord) => {
+      if (!rolloutsData?.length) {
+        return;
+      }
+      const rollout = rolloutsData.find((item) => item.rolloutId === record.rolloutId);
+      if (!rollout) {
+        return;
+      }
+
+      const attempts = attemptsData ?? [];
+      const attemptForRecord =
+        attempts.find((attempt) => attempt.attemptId === record.attemptId) ?? rollout.attempt ?? null;
+
+      dispatch(
+        openDrawer({
+          type: 'rollout-json',
+          rollout,
+          attempt: attemptForRecord,
+          isNested: false,
+        }),
+      );
+    },
+    [attemptsData, dispatch, rolloutsData],
+  );
+
+  const handleShowSpanDetail = useCallback(
+    (record: TracesTableRecord) => {
+      const rolloutForSpan = rolloutsData?.find((item) => item.rolloutId === record.rolloutId) ?? null;
+      const attempts = attemptsData ?? [];
+      const attemptForSpan =
+        attempts.find((attempt) => attempt.attemptId === record.attemptId) ?? rolloutForSpan?.attempt ?? null;
+
+      dispatch(
+        openDrawer({
+          type: 'trace-detail',
+          span: record,
+          rollout: rolloutForSpan,
+          attempt: attemptForSpan,
+        }),
+      );
+    },
+    [attemptsData, dispatch, rolloutsData],
+  );
+
+  const handleParentIdClick = useCallback(
+    (parentId: string) => {
+      dispatch(setTracesSearchTerm(parentId));
+    },
+    [dispatch],
+  );
+
+  const handleViewChange = useCallback(
+    (value: ViewOptionValue) => {
+      dispatch(setTracesViewMode(value));
+    },
+    [dispatch],
+  );
+
+  const activeViewLabel =
+    VIEW_OPTIONS.find((option) => option.value === viewMode)?.label ?? 'Table View';
+
   return (
     <Stack gap="md">
-      <Title order={1}>Traces</Title>
+      <Group justify="space-between" align="flex-start">
+        <Stack gap="sm" style={{ flex: 1, minWidth: 0 }}>
+          <Title order={1}>Traces</Title>
+          <Group gap="md" wrap="wrap">
+            <Select
+              data={rolloutOptions}
+              value={rolloutId ?? null}
+              onChange={(value) => {
+                if (value !== rolloutId) {
+                  dispatch(setTracesRolloutId(value));
+                }
+              }}
+              searchable
+              placeholder="Select rollout"
+              aria-label="Select rollout"
+              nothingFoundMessage={rolloutsFetching ? 'Loading...' : 'No rollouts'}
+              comboboxProps={{ withinPortal: true }}
+              w={260}
+              disabled={rolloutOptions.length === 0}
+            />
+            <Select
+              data={attemptOptions}
+              value={attemptId ?? null}
+              onChange={(value) => {
+                if (value !== attemptId) {
+                  dispatch(setTracesAttemptId(value));
+                }
+              }}
+              searchable
+              placeholder="Latest attempt"
+              aria-label="Select attempt"
+              nothingFoundMessage={attemptsFetching ? 'Loading...' : 'No attempts'}
+              comboboxProps={{ withinPortal: true }}
+              w={280}
+              disabled={!rolloutId || attemptOptions.length === 0}
+            />
+            <TextInput
+              value={searchTerm}
+              onChange={(event) => handleSearchTermChange(event.currentTarget.value)}
+              placeholder="Search spans"
+              aria-label="Search spans"
+              leftSection={<IconSearch size={16} />}
+              w={280}
+            />
+          </Group>
+        </Stack>
+        <Menu shadow="md" position="bottom-end" withinPortal>
+          <Menu.Target>
+            <Button
+              variant="light"
+              rightSection={<IconChevronDown size={16} />}
+              aria-label="Change traces view"
+            >
+              {activeViewLabel}
+            </Button>
+          </Menu.Target>
+          <Menu.Dropdown>
+            {VIEW_OPTIONS.map((option) => (
+              <Menu.Item
+                key={option.value}
+                disabled={option.disabled}
+                leftSection={
+                  option.value === viewMode && !option.disabled ? <IconCheck size={14} /> : null
+                }
+                onClick={() => {
+                  if (!option.disabled) {
+                    handleViewChange(option.value);
+                  }
+                }}
+              >
+                {option.label}
+              </Menu.Item>
+            ))}
+          </Menu.Dropdown>
+        </Menu>
+      </Group>
+
+      <Skeleton visible={isInitialLoading} radius="md">
+        <TracesTable
+          spans={rolloutId ? spans : []}
+          isFetching={isFetching}
+          isError={spansIsError}
+          error={spansError}
+          searchTerm={searchTerm}
+          sort={sort}
+          page={page}
+          recordsPerPage={recordsPerPage}
+          onSortStatusChange={handleSortStatusChange}
+          onPageChange={handlePageChange}
+          onRecordsPerPageChange={handleRecordsPerPageChange}
+          onResetFilters={handleResetFilters}
+          onRefetch={handleRefetch}
+          onShowRollout={handleShowRollout}
+          onShowSpanDetail={handleShowSpanDetail}
+          onParentIdClick={handleParentIdClick}
+          recordsPerPageOptions={recordsPerPageOptions}
+        />
+      </Skeleton>
     </Stack>
   );
 }

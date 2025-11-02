@@ -1,14 +1,21 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { Attempt, Rollout } from '@/types';
+import type { Attempt, Rollout, Span } from '@/types';
 
-export type DrawerType = 'rollout-json' | 'rollout-traces';
+export type DrawerType = 'rollout-json' | 'rollout-traces' | 'trace-detail';
 
-export type DrawerContent = {
-  type: DrawerType;
-  rollout: Rollout;
-  attempt: Attempt | null;
-  isNested: boolean;
-};
+export type DrawerContent =
+  | {
+      type: 'rollout-json' | 'rollout-traces';
+      rollout: Rollout;
+      attempt: Attempt | null;
+      isNested: boolean;
+    }
+  | {
+      type: 'trace-detail';
+      span: Span;
+      rollout: Rollout | null;
+      attempt: Attempt | null;
+    };
 
 export type DrawerState = {
   isOpen: boolean;

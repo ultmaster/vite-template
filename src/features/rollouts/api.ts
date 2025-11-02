@@ -2,7 +2,7 @@ import type { BaseQueryFn } from '@reduxjs/toolkit/query';
 import { createApi, fetchBaseQuery, type FetchArgs, type FetchBaseQueryError } from '@reduxjs/toolkit/query/react';
 import type { RootState } from '@/store';
 import { camelCaseKeys } from '@/utils/format';
-import type { Attempt, Rollout, Timestamp } from '../../types';
+import type { Attempt, Rollout, Span, Timestamp } from '../../types';
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: '/',
@@ -74,6 +74,26 @@ const normalizeRollout = (value: unknown): Rollout => {
   };
 };
 
+const normalizeSpan = (value: unknown): Span => {
+  const camelized = camelCaseKeys(value) as Span & {
+    status?: {
+      status_code?: Span['status']['status_code'];
+      statusCode?: Span['status']['status_code'];
+      description?: string | null;
+    };
+  };
+  const rawStatus = camelized.status ?? { status_code: 'UNSET', description: null };
+  return {
+    ...camelized,
+    parentId: camelized.parentId ?? null,
+    attributes: camelized.attributes ?? {},
+    status: {
+      status_code: rawStatus.status_code ?? rawStatus.statusCode ?? 'UNSET',
+      description: rawStatus.description ?? null,
+    },
+  };
+};
+
 const dynamicBaseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
   args,
   api,
@@ -98,7 +118,7 @@ const dynamicBaseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryE
 export const rolloutsApi = createApi({
   reducerPath: 'rolloutsApi',
   baseQuery: dynamicBaseQuery,
-  tagTypes: ['Rollout'],
+  tagTypes: ['Rollout', 'Span'],
   endpoints: (builder) => ({
     getRollouts: builder.query<Rollout[], void>({
       query: () => ({ url: 'rollouts', method: 'GET' }),
@@ -128,7 +148,36 @@ export const rolloutsApi = createApi({
       },
       providesTags: (_result, _error, rolloutId) => [{ type: 'Rollout', id: rolloutId }],
     }),
+    getSpans: builder.query<
+      Span[],
+      { rolloutId: string; attemptId?: string | null } | undefined
+    >({
+      query: (args) => {
+        if (!args || !args.rolloutId) {
+          throw new Error('rolloutId is required to fetch spans');
+        }
+        const searchParams = new URLSearchParams({ rollout_id: args.rolloutId });
+        if (args.attemptId) {
+          searchParams.set('attempt_id', args.attemptId);
+        }
+        return { url: `spans?${searchParams.toString()}`, method: 'GET' };
+      },
+      transformResponse: (response: unknown) => {
+        if (!Array.isArray(response)) {
+          throw new Error('Expected spans list payload');
+        }
+
+        return response.map((span) => normalizeSpan(span));
+      },
+      providesTags: (_result, _error, args) =>
+        args
+          ? [
+              { type: 'Span' as const, id: `${args.rolloutId}:${args.attemptId ?? 'latest'}` },
+              { type: 'Span' as const, id: 'LIST' },
+            ]
+          : [{ type: 'Span' as const, id: 'LIST' }],
+    }),
   }),
 });
 
-export const { useGetRolloutsQuery, useGetRolloutAttemptsQuery } = rolloutsApi;
+export const { useGetRolloutsQuery, useGetRolloutAttemptsQuery, useGetSpansQuery } = rolloutsApi;

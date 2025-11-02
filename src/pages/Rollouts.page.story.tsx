@@ -4,7 +4,7 @@ import { within } from '@testing-library/dom';
 import { Provider } from 'react-redux';
 import { http, HttpResponse, delay } from 'msw';
 import { RolloutsPage } from './Rollouts.page';
-import { RolloutDrawer } from '@/components/RolloutDrawer.component';
+import { AppDrawer } from '@/components/AppDrawer.component';
 import { createAppStore } from '../store';
 import { initialConfigState } from '../features/config/slice';
 import { initialRolloutsUiState, type RolloutsUiState } from '../features/rollouts/slice';
@@ -448,7 +448,7 @@ function renderWithStore(uiOverrides?: Partial<RolloutsUiState>) {
     <Provider store={store}>
       <>
         <RolloutsPage />
-        <RolloutDrawer />
+        <AppDrawer />
       </>
     </Provider>
   );
