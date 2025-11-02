@@ -25,13 +25,13 @@ import {
 } from '@mantine/core';
 import type { Resources } from '@/types';
 import { safeStringify } from '@/utils/format';
+import {
+  compareRecords,
+  createResponsiveColumns,
+  type ColumnVisibilityConfig,
+} from '@/utils/table';
 
 const DEFAULT_RECORDS_PER_PAGE_OPTIONS = [50, 100, 200, 500];
-
-type ColumnVisibilityConfig = {
-  minWidth: number;
-  priority: number;
-};
 
 const COLUMN_VISIBILITY: Record<string, ColumnVisibilityConfig> = {
   resourcesId: { minWidth: 200, priority: 0 },
@@ -119,33 +119,6 @@ function createResourcesColumns(_options: ResourcesColumnsOptions): DataTableCol
 
 type ComparatorKey = keyof Pick<ResourcesTableRecord, 'resourcesId' | 'resourceCount'>;
 
-function compareRecords(
-  a: ResourcesTableRecord,
-  b: ResourcesTableRecord,
-  key: ComparatorKey
-): number {
-  const valueA = a[key];
-  const valueB = b[key];
-
-  if (valueA === valueB) {
-    return 0;
-  }
-
-  if (valueA === null || valueA === undefined) {
-    return 1;
-  }
-
-  if (valueB === null || valueB === undefined) {
-    return -1;
-  }
-
-  if (typeof valueA === 'number' && typeof valueB === 'number') {
-    return valueA - valueB;
-  }
-
-  return String(valueA).localeCompare(String(valueB));
-}
-
 type RowExpansionRenderer = (context: {
   resources: Resources;
   columns: DataTableColumn<ResourcesTableRecord>[];
@@ -198,53 +171,10 @@ export function ResourcesTable({
 
   const columns = useMemo(() => createResourcesColumns({}), []);
 
-  const responsiveColumns = useMemo(() => {
-    const measuredWidth = containerWidth
-      ? Math.max(containerWidth - 48, 0)
-      : Number.POSITIVE_INFINITY;
-
-    const columnEntries = columns.map((column, index) => {
-      const accessorKey = String(column.accessor);
-      const config = COLUMN_VISIBILITY[accessorKey] ?? { minWidth: 160, priority: 3 };
-      return {
-        column,
-        index,
-        accessorKey,
-        ...config,
-      };
-    });
-
-    const sortedByPriority = columnEntries
-      .slice()
-      .sort((a, b) =>
-        a.priority === b.priority ? a.index - b.index : a.priority - b.priority
-      );
-
-    const visibleColumnIndices = new Set<number>();
-    let usedWidth = 0;
-
-    sortedByPriority.forEach((entry) => {
-      if (entry.priority === 0) {
-        visibleColumnIndices.add(entry.index);
-        usedWidth += entry.minWidth;
-      }
-    });
-
-    sortedByPriority.forEach((entry) => {
-      if (visibleColumnIndices.has(entry.index)) {
-        return;
-      }
-      if (usedWidth + entry.minWidth <= measuredWidth) {
-        visibleColumnIndices.add(entry.index);
-        usedWidth += entry.minWidth;
-      }
-    });
-
-    return columnEntries.map(({ column, index }) => ({
-      ...column,
-      hidden: !visibleColumnIndices.has(index),
-    }));
-  }, [columns, containerWidth]);
+  const responsiveColumns = useMemo(
+    () => createResponsiveColumns(columns, containerWidth, COLUMN_VISIBILITY),
+    [columns, containerWidth]
+  );
 
   const filteredRecords = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();

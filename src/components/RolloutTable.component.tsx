@@ -47,6 +47,11 @@ import {
   safeStringify,
   toTimestamp,
 } from '@/utils/format';
+import {
+  compareRecords,
+  createResponsiveColumns,
+  type ColumnVisibilityConfig,
+} from '@/utils/table';
 
 const ROLLOUT_STATUS_OPTIONS: RolloutStatus[] = [
   'queuing',
@@ -80,11 +85,6 @@ const ROLLOUT_STATUS_COLORS: Record<RolloutStatus, string> = {
 const ROLLOUT_MODE_OPTIONS: RolloutMode[] = ['train', 'val', 'test'];
 
 const DEFAULT_RECORDS_PER_PAGE_OPTIONS = [50, 100, 200, 500];
-
-type ColumnVisibilityConfig = {
-  minWidth: number;
-  priority: number;
-};
 
 const COLUMN_VISIBILITY: Record<string, ColumnVisibilityConfig> = {
   rolloutId: { minWidth: 200, priority: 0 },
@@ -507,29 +507,6 @@ type ComparatorKey = keyof Pick<
   | 'statusValue'
 >;
 
-function compareRecords(a: RolloutTableRecord, b: RolloutTableRecord, key: ComparatorKey): number {
-  const valueA = a[key];
-  const valueB = b[key];
-
-  if (valueA === valueB) {
-    return 0;
-  }
-
-  if (valueA === null || valueA === undefined) {
-    return 1;
-  }
-
-  if (valueB === null || valueB === undefined) {
-    return -1;
-  }
-
-  if (typeof valueA === 'number' && typeof valueB === 'number') {
-    return valueA - valueB;
-  }
-
-  return String(valueA).localeCompare(String(valueB));
-}
-
 type RowExpansionRenderer = (context: {
   rollout: Rollout;
   columns: DataTableColumn<RolloutTableRecord>[];
@@ -620,51 +597,10 @@ export function RolloutTable({
     ]
   );
 
-  const responsiveColumns = useMemo(() => {
-    const measuredWidth = containerWidth ? Math.max(containerWidth - 48, 0) : Number.POSITIVE_INFINITY;
-
-    const columnEntries = columns.map((column, index) => {
-      const accessorKey = String(column.accessor);
-      const config = COLUMN_VISIBILITY[accessorKey] ?? { minWidth: 160, priority: 3 };
-      return {
-        column,
-        index,
-        accessorKey,
-        ...config,
-      };
-    });
-
-    const sortedByPriority = columnEntries
-      .slice()
-      .sort((a, b) =>
-        a.priority === b.priority ? a.index - b.index : a.priority - b.priority
-      );
-
-    const visibleColumnIndices = new Set<number>();
-    let usedWidth = 0;
-
-    sortedByPriority.forEach((entry) => {
-      if (entry.priority === 0) {
-        visibleColumnIndices.add(entry.index);
-        usedWidth += entry.minWidth;
-      }
-    });
-
-    sortedByPriority.forEach((entry) => {
-      if (visibleColumnIndices.has(entry.index)) {
-        return;
-      }
-      if (usedWidth + entry.minWidth <= measuredWidth) {
-        visibleColumnIndices.add(entry.index);
-        usedWidth += entry.minWidth;
-      }
-    });
-
-    return columnEntries.map(({ column, index }) => ({
-      ...column,
-      hidden: !visibleColumnIndices.has(index),
-    }));
-  }, [columns, containerWidth]);
+  const responsiveColumns = useMemo(
+    () => createResponsiveColumns(columns, containerWidth, COLUMN_VISIBILITY),
+    [columns, containerWidth]
+  );
 
   const filteredRecords = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();

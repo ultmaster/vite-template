@@ -11,6 +11,7 @@ import {
   IconCheck,
   IconCopy,
   IconFileText,
+  IconLogs,
   IconRefresh,
 } from '@tabler/icons-react';
 import { DataTable, type DataTableColumn, type DataTableSortStatus } from 'mantine-datatable';
@@ -27,22 +28,22 @@ import {
 } from '@mantine/core';
 import type { Span } from '@/types';
 import { formatDateTime, formatDuration, toTimestamp } from '@/utils/format';
+import {
+  compareRecords,
+  createResponsiveColumns,
+  type ColumnVisibilityConfig,
+} from '@/utils/table';
 
 const DEFAULT_RECORDS_PER_PAGE_OPTIONS = [50, 100, 200, 500];
 
-type ColumnVisibilityConfig = {
-  minWidth: number;
-  priority: number;
-};
-
 const COLUMN_VISIBILITY: Record<string, ColumnVisibilityConfig> = {
-  traceId: { minWidth: 180, priority: 1 },
-  spanId: { minWidth: 180, priority: 1 },
-  parentId: { minWidth: 180, priority: 2 },
   name: { minWidth: 200, priority: 0 },
-  statusCode: { minWidth: 120, priority: 1 },
+  spanId: { minWidth: 180, priority: 1 },
+  traceId: { minWidth: 180, priority: 2 },
+  parentId: { minWidth: 180, priority: 2 },
+  statusCode: { minWidth: 120, priority: 2 },
   attributeKeys: { minWidth: 200, priority: 2 },
-  startTime: { minWidth: 180, priority: 2 },
+  startTime: { minWidth: 180, priority: 1 },
   duration: { minWidth: 120, priority: 2 },
   actionsPlaceholder: { minWidth: 120, priority: 0 },
 };
@@ -62,7 +63,7 @@ export type TracesTableRecord = Span & {
 
 export function buildTraceRecord(span: Span): TracesTableRecord {
   const statusCode = span.status.status_code;
-  const attributeKeys = Object.keys(span.attributes ?? {}).join(', ') || 'N/A';
+  const attributeKeys = Object.keys(span.attributes ?? {}).join(', ') || '';
   const startTimestamp = toTimestamp(span.startTime);
   const endTimestamp = toTimestamp(span.endTime);
   const duration = endTimestamp && startTimestamp ? endTimestamp - startTimestamp : 0;
@@ -91,13 +92,23 @@ function createTracesColumns({
 }: TracesColumnsOptions): DataTableColumn<TracesTableRecord>[] {
   return [
     {
+      accessor: 'name',
+      title: 'Name',
+      sortable: true,
+      render: ({ name }) => (
+        <Text size="sm" fw={500}>
+          {name}
+        </Text>
+      ),
+    },
+    {
       accessor: 'traceId',
       title: 'Trace ID',
       sortable: true,
       render: ({ traceId }) => (
         <Group gap={2}>
-          <Text size="sm" ff="monospace">
-            {traceId.slice(0, 8)}...
+          <Text size="sm">
+            {traceId}
           </Text>
           <CopyButton value={traceId}>
             {({ copied, copy }) => (
@@ -119,7 +130,7 @@ function createTracesColumns({
           </CopyButton>
         </Group>
       ),
-      width: '11em',
+      width: '12em',
     },
     {
       accessor: 'spanId',
@@ -127,8 +138,8 @@ function createTracesColumns({
       sortable: true,
       render: ({ spanId }) => (
         <Group gap={2}>
-          <Text size="sm" ff="monospace">
-            {spanId.slice(0, 8)}...
+          <Text size="sm">
+            {spanId}
           </Text>
           <CopyButton value={spanId}>
             {({ copied, copy }) => (
@@ -150,7 +161,7 @@ function createTracesColumns({
           </CopyButton>
         </Group>
       ),
-      width: '11em',
+      width: '12em',
     },
     {
       accessor: 'parentId',
@@ -160,7 +171,7 @@ function createTracesColumns({
         if (!parentId) {
           return (
             <Text size="sm" c="dimmed">
-              N/A
+              —
             </Text>
           );
         }
@@ -171,7 +182,6 @@ function createTracesColumns({
           <Group gap={2}>
             <Text
               size="sm"
-              ff="monospace"
               c={parentExists ? undefined : 'red'}
               style={{ cursor: parentExists ? 'pointer' : undefined }}
               onClick={(event) => {
@@ -181,7 +191,7 @@ function createTracesColumns({
                 }
               }}
             >
-              {parentId.slice(0, 8)}...
+              {parentId.slice(0, 8)}
             </Text>
             {!parentExists && (
               <Tooltip label="Parent span not found in table" withArrow>
@@ -191,18 +201,9 @@ function createTracesColumns({
           </Group>
         );
       },
-      width: '11em',
+      width: '12em',
     },
-    {
-      accessor: 'name',
-      title: 'Name',
-      sortable: true,
-      render: ({ name }) => (
-        <Text size="sm" fw={500}>
-          {name}
-        </Text>
-      ),
-    },
+
     {
       accessor: 'statusCode',
       title: 'Status',
@@ -218,9 +219,14 @@ function createTracesColumns({
       accessor: 'attributeKeys',
       title: 'Attribute Keys',
       render: ({ attributeKeys }) => (
-        <Text size="sm" c="dimmed" lineClamp={1}>
+        attributeKeys ? (
+        <Text size="sm" lineClamp={1}>
+          {/* TODO: dim "." and "," and other characters are just normal text */}
           {attributeKeys}
         </Text>
+        ) : (
+          <Text size="sm" c="dimmed">—</Text>
+        )
       ),
     },
     {
@@ -242,9 +248,9 @@ function createTracesColumns({
     {
       accessor: 'actionsPlaceholder',
       title: 'Actions',
-      width: '7em',
+      width: '6em',
       render: (record) => (
-        <Group gap={4}>
+        <Group gap={2}>
           <Tooltip label="Show rollout" withArrow disabled={!onShowRollout}>
             <ActionIcon
               aria-label="Show rollout"
@@ -255,7 +261,7 @@ function createTracesColumns({
                 onShowRollout?.(record);
               }}
             >
-              <IconFileText size={16} />
+              <IconLogs size={16} />
             </ActionIcon>
           </Tooltip>
           <Tooltip label="Show span detail" withArrow disabled={!onShowSpanDetail}>
@@ -281,29 +287,6 @@ type ComparatorKey = keyof Pick<
   TracesTableRecord,
   'traceId' | 'spanId' | 'parentId' | 'name' | 'statusCode' | 'startTime' | 'duration'
 >;
-
-function compareRecords(a: TracesTableRecord, b: TracesTableRecord, key: ComparatorKey): number {
-  const valueA = a[key];
-  const valueB = b[key];
-
-  if (valueA === valueB) {
-    return 0;
-  }
-
-  if (valueA === null || valueA === undefined) {
-    return 1;
-  }
-
-  if (valueB === null || valueB === undefined) {
-    return -1;
-  }
-
-  if (typeof valueA === 'number' && typeof valueB === 'number') {
-    return valueA - valueB;
-  }
-
-  return String(valueA).localeCompare(String(valueB));
-}
 
 export type TracesTableProps = {
   spans: Span[] | undefined;
@@ -368,53 +351,10 @@ export function TracesTable({
     [onShowRollout, onShowSpanDetail, onParentIdClick, spanIds]
   );
 
-  const responsiveColumns = useMemo(() => {
-    const measuredWidth = containerWidth
-      ? Math.max(containerWidth - 48, 0)
-      : Number.POSITIVE_INFINITY;
-
-    const columnEntries = columns.map((column, index) => {
-      const accessorKey = String(column.accessor);
-      const config = COLUMN_VISIBILITY[accessorKey] ?? { minWidth: 160, priority: 3 };
-      return {
-        column,
-        index,
-        accessorKey,
-        ...config,
-      };
-    });
-
-    const sortedByPriority = columnEntries
-      .slice()
-      .sort((a, b) =>
-        a.priority === b.priority ? a.index - b.index : a.priority - b.priority
-      );
-
-    const visibleColumnIndices = new Set<number>();
-    let usedWidth = 0;
-
-    sortedByPriority.forEach((entry) => {
-      if (entry.priority === 0) {
-        visibleColumnIndices.add(entry.index);
-        usedWidth += entry.minWidth;
-      }
-    });
-
-    sortedByPriority.forEach((entry) => {
-      if (visibleColumnIndices.has(entry.index)) {
-        return;
-      }
-      if (usedWidth + entry.minWidth <= measuredWidth) {
-        visibleColumnIndices.add(entry.index);
-        usedWidth += entry.minWidth;
-      }
-    });
-
-    return columnEntries.map(({ column, index }) => ({
-      ...column,
-      hidden: !visibleColumnIndices.has(index),
-    }));
-  }, [columns, containerWidth]);
+  const responsiveColumns = useMemo(
+    () => createResponsiveColumns(columns, containerWidth, COLUMN_VISIBILITY),
+    [columns, containerWidth]
+  );
 
   const filteredRecords = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
