@@ -34,9 +34,9 @@ import {
 const DEFAULT_RECORDS_PER_PAGE_OPTIONS = [50, 100, 200, 500];
 
 const COLUMN_VISIBILITY: Record<string, ColumnVisibilityConfig> = {
-  resourcesId: { minWidth: 200, priority: 0 },
-  resourceCount: { minWidth: 150, priority: 2 },
-  resourcesPreview: { minWidth: 250, priority: 1 },
+  resourcesId: { fixedWidth: 12, priority: 0 },
+  resourceCount: { fixedWidth: 8, priority: 2 },
+  resourcesPreview: { minWidth: 16, priority: 1 },
 };
 
 export type ResourcesTableRecord = Resources & {
@@ -95,14 +95,12 @@ function createResourcesColumns(_options: ResourcesColumnsOptions): DataTableCol
           </CopyButton>
         </Group>
       ),
-      width: '12em',
     },
     {
       accessor: 'resourceCount',
       title: 'Count',
       sortable: true,
       textAlign: 'left',
-      width: '8em',
       render: ({ resourceCount }) => <Text size="sm">{resourceCount}</Text>,
     },
     {

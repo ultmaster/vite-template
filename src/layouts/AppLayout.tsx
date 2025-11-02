@@ -6,7 +6,7 @@ import { RolloutDrawer } from '@/components/RolloutDrawer.component';
 import { AppAlertBanner } from '@/components/AppAlertBanner';
 import { useAppSelector } from '../store/hooks';
 import faviconUrl from '../favicon.svg';
-import { IconActivity, IconCpu, IconLogs, IconSettings } from '@tabler/icons-react';
+import { IconTimeline, IconCpu, IconRouteSquare, IconSettings } from '@tabler/icons-react';
 
 type ConnectionStatus = 'online' | 'offline' | 'unknown';
 
@@ -17,9 +17,9 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Rollouts', to: '/rollouts', icon: <IconLogs size={16} /> },
+  { label: 'Rollouts', to: '/rollouts', icon: <IconRouteSquare size={16} /> },
   { label: 'Resources', to: '/resources', icon: <IconCpu size={16} /> },
-  { label: 'Traces', to: '/traces', icon: <IconActivity size={16} /> },
+  { label: 'Traces', to: '/traces', icon: <IconTimeline size={16} /> },
   { label: 'Settings', to: '/settings', icon: <IconSettings size={16} /> },
 ];
 

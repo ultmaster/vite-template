@@ -2,16 +2,14 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useState,
 } from 'react';
 import { useElementSize } from '@mantine/hooks';
 import {
   IconAlertCircle,
-  IconBraces,
+  IconFileDescription,
   IconCheck,
   IconCopy,
-  IconFileText,
-  IconLogs,
+  IconRouteSquare,
   IconRefresh,
 } from '@tabler/icons-react';
 import { DataTable, type DataTableColumn, type DataTableSortStatus } from 'mantine-datatable';
@@ -37,15 +35,15 @@ import {
 const DEFAULT_RECORDS_PER_PAGE_OPTIONS = [50, 100, 200, 500];
 
 const COLUMN_VISIBILITY: Record<string, ColumnVisibilityConfig> = {
-  name: { minWidth: 200, priority: 0 },
-  spanId: { minWidth: 180, priority: 1 },
-  traceId: { minWidth: 180, priority: 2 },
-  parentId: { minWidth: 180, priority: 2 },
-  statusCode: { minWidth: 120, priority: 2 },
-  attributeKeys: { minWidth: 200, priority: 2 },
-  startTime: { minWidth: 180, priority: 1 },
-  duration: { minWidth: 120, priority: 2 },
-  actionsPlaceholder: { minWidth: 120, priority: 0 },
+  name: { minWidth: 12.5, priority: 0 },
+  spanId: { fixedWidth: 12, priority: 1 },
+  traceId: { fixedWidth: 12, priority: 2 },
+  parentId: { fixedWidth: 12, priority: 2 },
+  statusCode: { fixedWidth: 8, priority: 2 },
+  attributeKeys: { minWidth: 12.5, priority: 2 },
+  startTime: { fixedWidth: 12, priority: 1 },
+  duration: { fixedWidth: 10, priority: 2 },
+  actionsPlaceholder: { fixedWidth: 6, priority: 0 },
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -130,7 +128,6 @@ function createTracesColumns({
           </CopyButton>
         </Group>
       ),
-      width: '12em',
     },
     {
       accessor: 'spanId',
@@ -161,7 +158,6 @@ function createTracesColumns({
           </CopyButton>
         </Group>
       ),
-      width: '12em',
     },
     {
       accessor: 'parentId',
@@ -201,14 +197,12 @@ function createTracesColumns({
           </Group>
         );
       },
-      width: '12em',
     },
 
     {
       accessor: 'statusCode',
       title: 'Status',
       sortable: true,
-      width: '8em',
       render: ({ statusCode }) => (
         <Badge size="sm" variant="light" color={STATUS_COLORS[statusCode] ?? 'gray'}>
           {statusCode}
@@ -234,7 +228,6 @@ function createTracesColumns({
       title: 'Start Time',
       sortable: true,
       textAlign: 'left',
-      width: '12em',
       render: ({ startTime }) => <Text size="sm">{formatDateTime(toTimestamp(startTime))}</Text>,
     },
     {
@@ -242,13 +235,11 @@ function createTracesColumns({
       title: 'Duration',
       sortable: true,
       textAlign: 'left',
-      width: '10em',
       render: ({ duration }) => <Text size="sm">{formatDuration(duration)}</Text>,
     },
     {
       accessor: 'actionsPlaceholder',
       title: 'Actions',
-      width: '6em',
       render: (record) => (
         <Group gap={2}>
           <Tooltip label="Show rollout" withArrow disabled={!onShowRollout}>
@@ -261,7 +252,7 @@ function createTracesColumns({
                 onShowRollout?.(record);
               }}
             >
-              <IconLogs size={16} />
+              <IconRouteSquare size={16} />
             </ActionIcon>
           </Tooltip>
           <Tooltip label="Show span detail" withArrow disabled={!onShowSpanDetail}>
@@ -274,7 +265,7 @@ function createTracesColumns({
                 onShowSpanDetail?.(record);
               }}
             >
-              <IconBraces size={16} />
+              <IconFileDescription size={16} />
             </ActionIcon>
           </Tooltip>
         </Group>

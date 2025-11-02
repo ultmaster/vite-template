@@ -3,10 +3,17 @@ import type { DataTableColumn } from 'mantine-datatable';
 /**
  * Configuration for column visibility based on screen width
  */
-export type ColumnVisibilityConfig = {
-  minWidth: number;
-  priority: number;
-};
+export type ColumnVisibilityConfig =
+  | {
+      minWidth: number;
+      priority: number;
+      fixedWidth?: never;
+    }
+  | {
+      fixedWidth: number;
+      priority: number;
+      minWidth?: never;
+    };
 
 /**
  * Compare two records for sorting purposes
@@ -39,6 +46,15 @@ export function compareRecords<T, K extends keyof T>(a: T, b: T, key: K): number
  * Create responsive columns based on container width
  * Columns with priority 0 are always shown, others are shown based on available space
  */
+const EM_IN_PIXELS = 16;
+
+function resolveWidth(config: ColumnVisibilityConfig): { widthEm: number; fixed: boolean } {
+  if ('fixedWidth' in config && typeof config.fixedWidth === 'number') {
+    return { widthEm: config.fixedWidth, fixed: true };
+  }
+  return { widthEm: config.minWidth, fixed: false };
+}
+
 export function createResponsiveColumns<T>(
   columns: DataTableColumn<T>[],
   containerWidth: number,
@@ -48,12 +64,21 @@ export function createResponsiveColumns<T>(
 
   const columnEntries = columns.map((column, index) => {
     const accessorKey = String(column.accessor);
-    const config = columnVisibilityConfig[accessorKey] ?? { minWidth: 160, priority: 3 };
+    const config =
+      columnVisibilityConfig[accessorKey] ??
+      ({
+        minWidth: 10,
+        priority: 3,
+      } satisfies ColumnVisibilityConfig);
+    const { widthEm, fixed } = resolveWidth(config);
     return {
       column,
       index,
       accessorKey,
       ...config,
+      widthEm,
+      widthPx: widthEm * EM_IN_PIXELS,
+      fixed,
     };
   });
 
@@ -68,7 +93,7 @@ export function createResponsiveColumns<T>(
   sortedByPriority.forEach((entry) => {
     if (entry.priority === 0) {
       visibleColumnIndices.add(entry.index);
-      usedWidth += entry.minWidth;
+      usedWidth += entry.widthPx;
     }
   });
 
@@ -77,14 +102,23 @@ export function createResponsiveColumns<T>(
     if (visibleColumnIndices.has(entry.index)) {
       return;
     }
-    if (usedWidth + entry.minWidth <= measuredWidth) {
+    if (usedWidth + entry.widthPx <= measuredWidth) {
       visibleColumnIndices.add(entry.index);
-      usedWidth += entry.minWidth;
+      usedWidth += entry.widthPx;
     }
   });
 
-  return columnEntries.map(({ column, index }) => ({
-    ...column,
-    hidden: !visibleColumnIndices.has(index),
-  }));
+  return columnEntries.map(({ column, index, fixed, widthEm }) => {
+    const columnWidth = `${widthEm}em`;
+    const existingStyle = (column as any).style ?? {};
+    return {
+      ...column,
+      width: fixed ? columnWidth : column.width,
+      style: {
+        ...existingStyle,
+        minWidth: columnWidth,
+      },
+      hidden: !visibleColumnIndices.has(index),
+    };
+  });
 }

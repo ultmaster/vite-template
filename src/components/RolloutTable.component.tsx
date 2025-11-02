@@ -9,7 +9,7 @@ import {
 import { useElementSize } from '@mantine/hooks';
 import {
   IconAlertCircle,
-  IconBraces,
+  IconFileDescription,
   IconCheck,
   IconCopy,
   IconRefresh,
@@ -87,17 +87,17 @@ const ROLLOUT_MODE_OPTIONS: RolloutMode[] = ['train', 'val', 'test'];
 const DEFAULT_RECORDS_PER_PAGE_OPTIONS = [50, 100, 200, 500];
 
 const COLUMN_VISIBILITY: Record<string, ColumnVisibilityConfig> = {
-  rolloutId: { minWidth: 200, priority: 0 },
-  actionsPlaceholder: { minWidth: 120, priority: 0 },
-  inputText: { minWidth: 220, priority: 1 },
-  statusValue: { minWidth: 150, priority: 1 },
-  startTimestamp: { minWidth: 180, priority: 2 },
-  durationSeconds: { minWidth: 150, priority: 2 },
-  attemptId: { minWidth: 180, priority: 3 },
-  resourcesId: { minWidth: 150, priority: 3 },
-  mode: { minWidth: 140, priority: 3 },
-  lastHeartbeatTimestamp: { minWidth: 170, priority: 3 },
-  workerId: { minWidth: 150, priority: 3 },
+  rolloutId: { fixedWidth: 10, priority: 0 },
+  actionsPlaceholder: { fixedWidth: 6.5, priority: 0 },
+  inputText: { minWidth: 14, priority: 1 },
+  statusValue: { fixedWidth: 10, priority: 1 },
+  startTimestamp: { fixedWidth: 12, priority: 2 },
+  durationSeconds: { fixedWidth: 10, priority: 2 },
+  attemptId: { fixedWidth: 12, priority: 3 },
+  resourcesId: { fixedWidth: 8, priority: 3 },
+  mode: { fixedWidth: 8, priority: 3 },
+  lastHeartbeatTimestamp: { fixedWidth: 10, priority: 3 },
+  workerId: { fixedWidth: 10, priority: 3 },
 };
 
 export type RolloutTableRecord = Rollout & {
@@ -262,7 +262,6 @@ function createRolloutColumns({
           </CopyButton>
         </Group>
       ),
-      width: '10em',
     },
     {
       accessor: 'attemptId',
@@ -300,7 +299,6 @@ function createRolloutColumns({
           )}
         </Group>
       ),
-      width: '12em',
     },
     {
       accessor: 'inputText',
@@ -315,7 +313,6 @@ function createRolloutColumns({
       accessor: 'statusValue',
       title: 'Status',
       sortable: true,
-      width: '10em',
       filter: ({ close }) => (
         <Stack gap="xs">
           <MultiSelect
@@ -367,7 +364,6 @@ function createRolloutColumns({
       accessor: 'resourcesId',
       title: 'Resources',
       sortable: true,
-      width: '8em',
       render: ({ resourcesId }) => (
         <Text size="sm" c={resourcesId ? undefined : 'dimmed'}>
           {resourcesId ?? '—'}
@@ -378,7 +374,6 @@ function createRolloutColumns({
       accessor: 'mode',
       title: 'Mode',
       sortable: true,
-      width: '8em',
       filter: ({ close }) => (
         <Stack gap="xs">
           <MultiSelect
@@ -417,7 +412,6 @@ function createRolloutColumns({
       title: 'Start Time',
       sortable: true,
       textAlign: 'left',
-      width: '12em',
       render: ({ startTimestamp }) => <Text size="sm">{formatDateTime(startTimestamp)}</Text>,
     },
     {
@@ -425,7 +419,6 @@ function createRolloutColumns({
       title: 'Duration',
       sortable: true,
       textAlign: 'left',
-      width: '10em',
       render: ({ durationSeconds }) => <Text size="sm">{formatDuration(durationSeconds)}</Text>,
     },
     {
@@ -433,7 +426,6 @@ function createRolloutColumns({
       title: 'Last Heartbeat',
       sortable: true,
       textAlign: 'left',
-      width: '10em',
       render: ({ lastHeartbeatTimestamp, attempt, isNested }) => {
         if (!attempt && isNested) {
           return (
@@ -449,7 +441,6 @@ function createRolloutColumns({
       accessor: 'workerId',
       title: 'Worker',
       sortable: true,
-      width: '10em',
       render: ({ workerId }) => (
         <Text size="sm" c={workerId ? undefined : 'dimmed'}>
           {workerId ?? '—'}
@@ -459,7 +450,6 @@ function createRolloutColumns({
     {
       accessor: 'actionsPlaceholder',
       title: 'Actions',
-      width: '6.5em',
       render: (record) => (
         <Group gap={4}>
           <Tooltip label="View raw JSON" withArrow disabled={!onViewRawJson}>
@@ -472,7 +462,7 @@ function createRolloutColumns({
                 onViewRawJson?.(record);
               }}
             >
-              <IconBraces size={16} />
+              <IconFileDescription size={16} />
             </ActionIcon>
           </Tooltip>
           <Tooltip label="View traces" withArrow disabled={!onViewTraces}>
