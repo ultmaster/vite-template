@@ -59,102 +59,217 @@ function formatJson(value: unknown) {
   }
 }
 
-type RolloutDrawerContent = Extract<DrawerContent, { type: 'rollout-json' | 'rollout-traces' }>;
-
-type RolloutDrawerProps = {
-  content: RolloutDrawerContent;
-  isOpen: boolean;
-  onClose: () => void;
-};
-
-export function RolloutDrawer({ content, isOpen, onClose }: RolloutDrawerProps) {
+export function AppDrawer() {
+  const dispatch = useAppDispatch();
+  const isOpen = useAppSelector(selectDrawerIsOpen);
+  const content = useAppSelector(selectDrawerContent);
   const { colorScheme } = useMantineColorScheme();
 
-  const rollout = content.rollout;
-  const attempt = content.attempt;
+  const handleClose = () => {
+    dispatch(closeDrawer());
+  };
 
-  const rolloutId = rollout.rolloutId;
-  const attemptId = attempt?.attemptId ?? null;
-  const heading = rolloutId;
-  const rolloutStatus = rollout.status ?? null;
-  const attemptStatus = attempt?.status ?? null;
-  const rolloutStatusLabel = rolloutStatus ? formatStatusLabel(rolloutStatus) : null;
-  const attemptStatusLabel = attemptStatus ? formatStatusLabel(attemptStatus) : null;
-  const hasStatusMismatch =
-    rolloutStatus !== null && attemptStatus !== null && rolloutStatus !== attemptStatus;
-  const rolloutBadgeColor = rolloutStatus ? getStatusBadgeColor(rolloutStatus, false) : undefined;
-  const attemptBadgeColor = attemptStatus ? getStatusBadgeColor(attemptStatus, true) : undefined;
-  const showRolloutBadgeInHeading = Boolean(rolloutStatusLabel && (!attemptStatus || hasStatusMismatch));
-  const showAttemptBadge = Boolean(attemptStatusLabel && attemptStatus);
+  if (!content) {
+    return null;
+  }
 
-  const titleContent = (
-    <Stack gap={3}>
-      <Group gap={6}>
-        <Text fw={600}>{rolloutId}</Text>
-        <CopyButton value={rolloutId}>
-          {({ copied, copy }) => (
-            <Tooltip label={copied ? 'Copied' : 'Copy'} withArrow>
-              <ActionIcon
-                aria-label={`Copy rollout ID ${rolloutId}`}
-                variant="subtle"
-                color={copied ? 'teal' : 'gray'}
-                size="sm"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  copy();
-                }}
-              >
-                {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
-              </ActionIcon>
-            </Tooltip>
-          )}
-        </CopyButton>
-        {showRolloutBadgeInHeading && rolloutStatusLabel ? (
-          <Badge size="sm" variant="light" color={rolloutBadgeColor}>
-            {rolloutStatusLabel}
-          </Badge>
-        ) : null}
-      </Group>
-      <Group gap="xs">
-        {attemptId ? (
-          <Group gap={3}>
-            <Text size="sm" c="dimmed" fw={500}>
-              Attempt
-            </Text>
-            <Text size="sm" c="dimmed">
-              {attemptId}
-            </Text>
-          </Group>
-        ) : null}
-        {showAttemptBadge && attemptStatusLabel ? (
-          <Badge size="sm" variant="light" color={attemptBadgeColor}>
-            {attemptStatusLabel}
-          </Badge>
-        ) : null}
-        {!showRolloutBadgeInHeading && !attemptStatus && rolloutStatusLabel ? (
-          <Badge size="sm" variant="light" color={rolloutBadgeColor}>
-            {rolloutStatusLabel}
-          </Badge>
-        ) : null}
-      </Group>
-    </Stack>
-  );
-
-  const jsonValue =
-    content.type === 'rollout-json'
-      ? content.isNested && content.attempt
-        ? content.attempt
-        : content.rollout
-      : null;
-  const formattedJson = useMemo(() => (jsonValue ? formatJson(jsonValue) : ''), [jsonValue]);
   const editorTheme = colorScheme === 'dark' ? 'vs-dark' : 'vs-light';
+
+  const { titleContent, heading, bodyContent } = useMemo(() => {
+    if (content.type === 'trace-detail') {
+      const span = content.span;
+      const spanStatusCode = span.status?.status_code ?? null;
+      const spanBadgeColor = spanStatusCode ? SPAN_STATUS_COLORS[spanStatusCode] ?? 'gray' : undefined;
+      const formattedJson = formatJson(span);
+
+      const title = (
+        <Stack gap={3}>
+          <Group gap={6}>
+            <Text fw={600}>{span.name ?? span.spanId}</Text>
+            {spanStatusCode ? (
+              <Badge size="sm" variant="light" color={spanBadgeColor}>
+                {spanStatusCode}
+              </Badge>
+            ) : null}
+          </Group>
+          <Group gap={6}>
+            <Text size="sm" c="dimmed">
+              {span.spanId}
+            </Text>
+            <CopyButton value={span.spanId}>
+              {({ copied, copy }) => (
+                <Tooltip label={copied ? 'Copied' : 'Copy'} withArrow>
+                  <ActionIcon
+                    aria-label={`Copy span ID ${span.spanId}`}
+                    variant="subtle"
+                    color={copied ? 'teal' : 'gray'}
+                    size="sm"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      copy();
+                    }}
+                  >
+                    {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                  </ActionIcon>
+                </Tooltip>
+              )}
+            </CopyButton>
+          </Group>
+          <Group gap="xs">
+            <Group gap={3}>
+              <Text size="sm" c="dimmed" fw={500}>
+                Rollout
+              </Text>
+              <Text size="sm" c="dimmed">
+                {span.rolloutId}
+              </Text>
+            </Group>
+            <Group gap={3}>
+              <Text size="sm" c="dimmed" fw={500}>
+                Attempt
+              </Text>
+              <Text size="sm" c="dimmed">
+                {span.attemptId ?? '—'}
+              </Text>
+            </Group>
+          </Group>
+        </Stack>
+      );
+
+      return {
+        titleContent: title,
+        heading: span.name ?? span.spanId,
+        bodyContent: (
+          <Box style={{ flex: 1, minHeight: 0 }}>
+            <Editor
+              height="100%"
+              language="json"
+              value={formattedJson}
+              theme={editorTheme}
+              options={{
+                readOnly: true,
+                domReadOnly: true,
+                minimap: { enabled: false },
+                automaticLayout: true,
+                scrollBeyondLastLine: false,
+                fontSize: 13,
+              }}
+            />
+          </Box>
+        ),
+      };
+    }
+
+    const rollout = content.rollout;
+    const attempt = content.attempt;
+    const rolloutId = rollout.rolloutId;
+    const attemptId = attempt?.attemptId ?? null;
+    const rolloutStatus = rollout.status ?? null;
+    const attemptStatus = attempt?.status ?? null;
+    const rolloutStatusLabel = rolloutStatus ? formatStatusLabel(rolloutStatus) : null;
+    const attemptStatusLabel = attemptStatus ? formatStatusLabel(attemptStatus) : null;
+    const hasStatusMismatch =
+      rolloutStatus !== null && attemptStatus !== null && rolloutStatus !== attemptStatus;
+    const rolloutBadgeColor = rolloutStatus ? getStatusBadgeColor(rolloutStatus, false) : undefined;
+    const attemptBadgeColor = attemptStatus ? getStatusBadgeColor(attemptStatus, true) : undefined;
+    const showRolloutBadgeInHeading = Boolean(rolloutStatusLabel && (!attemptStatus || hasStatusMismatch));
+    const showAttemptBadge = Boolean(attemptStatusLabel && attemptStatus);
+
+    const title = (
+      <Stack gap={3}>
+        <Group gap={6}>
+          <Text fw={600}>{rolloutId}</Text>
+          <CopyButton value={rolloutId}>
+            {({ copied, copy }) => (
+              <Tooltip label={copied ? 'Copied' : 'Copy'} withArrow>
+                <ActionIcon
+                  aria-label={`Copy rollout ID ${rolloutId}`}
+                  variant="subtle"
+                  color={copied ? 'teal' : 'gray'}
+                  size="sm"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    copy();
+                  }}
+                >
+                  {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </CopyButton>
+          {showRolloutBadgeInHeading && rolloutStatusLabel ? (
+            <Badge size="sm" variant="light" color={rolloutBadgeColor}>
+              {rolloutStatusLabel}
+            </Badge>
+          ) : null}
+        </Group>
+        <Group gap="xs">
+          {attemptId ? (
+            <Group gap={3}>
+              <Text size="sm" c="dimmed" fw={500}>
+                Attempt
+              </Text>
+              <Text size="sm" c="dimmed">
+                {attemptId}
+              </Text>
+            </Group>
+          ) : null}
+          {showAttemptBadge && attemptStatusLabel ? (
+            <Badge size="sm" variant="light" color={attemptBadgeColor}>
+              {attemptStatusLabel}
+            </Badge>
+          ) : null}
+          {!showRolloutBadgeInHeading && !attemptStatus && rolloutStatusLabel ? (
+            <Badge size="sm" variant="light" color={rolloutBadgeColor}>
+              {rolloutStatusLabel}
+            </Badge>
+          ) : null}
+        </Group>
+      </Stack>
+    );
+
+    const jsonValue =
+      content.type === 'rollout-json'
+        ? content.isNested && content.attempt
+          ? content.attempt
+          : content.rollout
+        : null;
+
+    const body =
+      jsonValue !== null
+        ? (
+          <Box style={{ flex: 1, minHeight: 0 }}>
+            <Editor
+              height="100%"
+              language="json"
+              value={formatJson(jsonValue)}
+              theme={editorTheme}
+              options={{
+                readOnly: true,
+                domReadOnly: true,
+                minimap: { enabled: false },
+                automaticLayout: true,
+                scrollBeyondLastLine: false,
+                fontSize: 13,
+              }}
+            />
+          </Box>
+        )
+        : null;
+
+    return {
+      titleContent: title,
+      heading: rolloutId,
+      bodyContent: body,
+    };
+  }, [content, editorTheme]);
 
   return (
     <Drawer
       position="right"
       size="lg"
       opened={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       overlayProps={{ opacity: 0.5, blur: 4 }}
       withinPortal
       styles={{
@@ -175,162 +290,8 @@ export function RolloutDrawer({ content, isOpen, onClose }: RolloutDrawerProps) 
       title={titleContent ?? heading}
     >
       <Stack gap="md" h="100%" style={{ flex: 1, minHeight: 0 }}>
-        {content.type === 'rollout-json' && jsonValue ? (
-          <Box style={{ flex: 1, minHeight: 0 }}>
-            <Editor
-              height="100%"
-              language="json"
-              value={formattedJson}
-              theme={editorTheme}
-              options={{
-                readOnly: true,
-                domReadOnly: true,
-                minimap: { enabled: false },
-                automaticLayout: true,
-                scrollBeyondLastLine: false,
-                fontSize: 13,
-              }}
-            />
-          </Box>
-        ) : null}
+        {bodyContent}
       </Stack>
     </Drawer>
   );
-}
-
-type SpanDrawerContent = Extract<DrawerContent, { type: 'trace-detail' }>;
-
-type SpanDrawerProps = {
-  content: SpanDrawerContent;
-  isOpen: boolean;
-  onClose: () => void;
-};
-
-export function SpanDrawer({ content, isOpen, onClose }: SpanDrawerProps) {
-  const { colorScheme } = useMantineColorScheme();
-  const span = content.span;
-  const spanStatusCode = span.status?.status_code ?? null;
-  const spanBadgeColor = spanStatusCode ? SPAN_STATUS_COLORS[spanStatusCode] ?? 'gray' : undefined;
-  const formattedJson = useMemo(() => formatJson(span), [span]);
-  const editorTheme = colorScheme === 'dark' ? 'vs-dark' : 'vs-light';
-
-  const titleContent = (
-    <Stack gap={3}>
-      <Group gap={6}>
-        <Text fw={600}>{span.name ?? span.spanId}</Text>
-        {spanStatusCode ? (
-          <Badge size="sm" variant="light" color={spanBadgeColor}>
-            {spanStatusCode}
-          </Badge>
-        ) : null}
-      </Group>
-      <Group gap={6}>
-        <Text size="sm" c="dimmed">
-          {span.spanId}
-        </Text>
-        <CopyButton value={span.spanId}>
-          {({ copied, copy }) => (
-            <Tooltip label={copied ? 'Copied' : 'Copy'} withArrow>
-              <ActionIcon
-                aria-label={`Copy span ID ${span.spanId}`}
-                variant="subtle"
-                color={copied ? 'teal' : 'gray'}
-                size="sm"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  copy();
-                }}
-              >
-                {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
-              </ActionIcon>
-            </Tooltip>
-          )}
-        </CopyButton>
-      </Group>
-      <Group gap="xs">
-        <Group gap={3}>
-          <Text size="sm" c="dimmed" fw={500}>
-            Rollout
-          </Text>
-          <Text size="sm" c="dimmed">
-            {span.rolloutId}
-          </Text>
-        </Group>
-        <Group gap={3}>
-          <Text size="sm" c="dimmed" fw={500}>
-            Attempt
-          </Text>
-          <Text size="sm" c="dimmed">
-            {span.attemptId ?? '—'}
-          </Text>
-        </Group>
-      </Group>
-    </Stack>
-  );
-
-  return (
-    <Drawer
-      position="right"
-      size="lg"
-      opened={isOpen}
-      onClose={onClose}
-      overlayProps={{ opacity: 0.5, blur: 4 }}
-      withinPortal
-      styles={{
-        content: {
-          display: 'flex',
-          flexDirection: 'column',
-          maxHeight: '100vh',
-        },
-        body: {
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          padding: 'var(--mantine-spacing-md)',
-          minHeight: 0,
-          overflow: 'hidden',
-        },
-      }}
-      title={titleContent ?? span.name ?? span.spanId}
-    >
-      <Stack gap="md" h="100%" style={{ flex: 1, minHeight: 0 }}>
-        <Box style={{ flex: 1, minHeight: 0 }}>
-          <Editor
-            height="100%"
-            language="json"
-            value={formattedJson}
-            theme={editorTheme}
-            options={{
-              readOnly: true,
-              domReadOnly: true,
-              minimap: { enabled: false },
-              automaticLayout: true,
-              scrollBeyondLastLine: false,
-              fontSize: 13,
-            }}
-          />
-        </Box>
-      </Stack>
-    </Drawer>
-  );
-}
-
-export function AppDrawer() {
-  const dispatch = useAppDispatch();
-  const isOpen = useAppSelector(selectDrawerIsOpen);
-  const content = useAppSelector(selectDrawerContent);
-
-  const handleClose = () => {
-    dispatch(closeDrawer());
-  };
-
-  if (!content) {
-    return null;
-  }
-
-  if (content.type === 'trace-detail') {
-    return <SpanDrawer content={content} isOpen={isOpen} onClose={handleClose} />;
-  }
-
-  return <RolloutDrawer content={content} isOpen={isOpen} onClose={handleClose} />;
 }
