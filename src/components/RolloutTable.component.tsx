@@ -47,11 +47,7 @@ import {
   safeStringify,
   toTimestamp,
 } from '@/utils/format';
-import {
-  compareRecords,
-  createResponsiveColumns,
-  type ColumnVisibilityConfig,
-} from '@/utils/table';
+import { createResponsiveColumns, type ColumnVisibilityConfig } from '@/utils/table';
 
 const ROLLOUT_STATUS_OPTIONS: RolloutStatus[] = [
   'queuing',
@@ -484,19 +480,6 @@ function createRolloutColumns({
   ];
 }
 
-type ComparatorKey = keyof Pick<
-  RolloutTableRecord,
-  | 'rolloutId'
-  | 'attemptId'
-  | 'resourcesId'
-  | 'mode'
-  | 'startTimestamp'
-  | 'durationSeconds'
-  | 'lastHeartbeatTimestamp'
-  | 'workerId'
-  | 'statusValue'
->;
-
 type RowExpansionRenderer = (context: {
   rollout: Rollout;
   columns: DataTableColumn<RolloutTableRecord>[];
@@ -504,6 +487,7 @@ type RowExpansionRenderer = (context: {
 
 export type RolloutTableProps = {
   rollouts: Rollout[] | undefined;
+  totalRecords: number;
   isFetching: boolean;
   isError: boolean;
   error: unknown;
@@ -530,6 +514,7 @@ export type RolloutTableProps = {
 
 export function RolloutTable({
   rollouts,
+  totalRecords,
   isFetching,
   isError,
   error,
@@ -592,38 +577,10 @@ export function RolloutTable({
     [columns, containerWidth]
   );
 
-  const filteredRecords = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-    const includeStatuses = statusFilters.length > 0 ? statusFilters : undefined;
-    const includeModes = modeFilters.length > 0 ? modeFilters : undefined;
-
-    return rolloutRecords.filter((record) => {
-      const matchesSearch =
-        normalizedSearch.length === 0 || record.rolloutId.toLowerCase().includes(normalizedSearch);
-      const matchesStatus = !includeStatuses || includeStatuses.includes(record.status);
-      const matchesMode =
-        !includeModes || (record.mode !== null && includeModes.includes(record.mode));
-
-      return matchesSearch && matchesStatus && matchesMode;
-    });
-  }, [modeFilters, rolloutRecords, searchTerm, statusFilters]);
-
-  const sortedRecords = useMemo(() => {
-    const sorted = filteredRecords.slice();
-    const { column, direction } = sort;
-    const comparatorKey = column as ComparatorKey;
-    if (!sorted.length || !(comparatorKey in sorted[0])) {
-      return sorted;
-    }
-    sorted.sort((a, b) => compareRecords(a, b, comparatorKey));
-    if (direction === 'desc') {
-      sorted.reverse();
-    }
-    return sorted;
-  }, [filteredRecords, sort]);
-
-  const totalRecords = sortedRecords.length;
-  const totalPages = Math.max(1, Math.ceil(totalRecords / recordsPerPage));
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(Math.max(0, totalRecords) / Math.max(1, recordsPerPage))),
+    [recordsPerPage, totalRecords],
+  );
 
   useEffect(() => {
     if (page > totalPages) {
@@ -631,19 +588,13 @@ export function RolloutTable({
     }
   }, [onPageChange, page, totalPages]);
 
-  const paginatedRecords = useMemo(() => {
-    const startIndex = (page - 1) * recordsPerPage;
-    const endIndex = startIndex + recordsPerPage;
-    return sortedRecords.slice(startIndex, endIndex);
-  }, [page, recordsPerPage, sortedRecords]);
-
   useEffect(() => {
     setExpandedRecordIds((current) =>
       current.filter((id) =>
-        paginatedRecords.some((record) => record.rolloutId === id && record.canExpand)
+        rolloutRecords.some((record) => record.rolloutId === id && record.canExpand),
       )
     );
-  }, [paginatedRecords]);
+  }, [rolloutRecords]);
 
   const hasActiveFilters =
     searchTerm.trim().length > 0 || statusFilters.length > 0 || modeFilters.length > 0;
@@ -730,9 +681,9 @@ export function RolloutTable({
         withColumnBorders
         highlightOnHover
         verticalAlign="center"
-        minHeight={paginatedRecords.length === 0 ? 500 : undefined}
+        minHeight={rolloutRecords.length === 0 ? 500 : undefined}
         idAccessor="rolloutId"
-        records={paginatedRecords}
+        records={rolloutRecords}
         columns={responsiveColumns}
         totalRecords={totalRecords}
         recordsPerPage={recordsPerPage}
@@ -744,7 +695,7 @@ export function RolloutTable({
         onSortStatusChange={handleSortStatusChange}
         fetching={isFetching}
         loaderSize="sm"
-        emptyState={paginatedRecords.length === 0 ? emptyState : undefined}
+        emptyState={rolloutRecords.length === 0 ? emptyState : undefined}
         rowExpansion={
           renderRowExpansion
             ? {
@@ -761,7 +712,7 @@ export function RolloutTable({
                       return resolved
                         .map(String)
                         .filter((id) =>
-                          paginatedRecords.some(
+                          rolloutRecords.some(
                             (tableRecord) => tableRecord.rolloutId === id && tableRecord.canExpand
                           )
                         );

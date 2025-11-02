@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Box, Stack, TextInput, Title } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
-import { RolloutTable } from './RolloutTable.component';
+import { RolloutTable, buildRolloutRecord, type RolloutTableRecord } from './RolloutTable.component';
 import type { Rollout, RolloutMode, RolloutStatus } from '@/types';
 import type { RolloutsSortState } from '@/features/rollouts';
+import { compareRecords } from '@/utils/table';
 
 const meta: Meta<typeof RolloutTable> = {
   title: 'Components/RolloutTable',
@@ -170,6 +171,58 @@ function RolloutTableStoryWrapper({
     direction: 'desc',
   });
 
+  const tableRecords = useMemo<RolloutTableRecord[]>(() => {
+    if (!rollouts) {
+      return [];
+    }
+    return rollouts.map((rolloutItem) => buildRolloutRecord(rolloutItem));
+  }, [rollouts]);
+
+  const filteredRecords = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    return tableRecords.filter((record) => {
+      const matchesSearch =
+        normalizedSearch.length === 0 || record.rolloutId.toLowerCase().includes(normalizedSearch);
+      const matchesStatus =
+        statusFilters.length === 0 || statusFilters.includes(record.status);
+      const matchesMode =
+        modeFilters.length === 0 || (record.mode !== null && modeFilters.includes(record.mode));
+      return matchesSearch && matchesStatus && matchesMode;
+    });
+  }, [modeFilters, searchTerm, statusFilters, tableRecords]);
+
+  const sortedRecords = useMemo(() => {
+    const sorted = filteredRecords.slice();
+    if (!sorted.length) {
+      return sorted;
+    }
+    const comparatorKey = sort.column as keyof RolloutTableRecord;
+    if (!(comparatorKey in sorted[0])) {
+      return sorted;
+    }
+    sorted.sort((a, b) => compareRecords(a, b, comparatorKey));
+    if (sort.direction === 'desc') {
+      sorted.reverse();
+    }
+    return sorted;
+  }, [filteredRecords, sort]);
+
+  const totalRecordsValue = sortedRecords.length;
+
+  const pagedRecords = useMemo(
+    () => {
+      const startIndex = (page - 1) * recordsPerPage;
+      const endIndex = startIndex + recordsPerPage;
+      return sortedRecords.slice(startIndex, endIndex);
+    },
+    [page, recordsPerPage, sortedRecords],
+  );
+
+  const pagedRollouts = useMemo(
+    () => pagedRecords.map((record) => record as Rollout),
+    [pagedRecords],
+  );
+
   return (
     <Box mx="auto" style={{ maxWidth, width: '100%', padding: 16 }}>
       <Stack gap="md">
@@ -184,7 +237,8 @@ function RolloutTableStoryWrapper({
           style={{ maxWidth: 360 }}
         />
         <RolloutTable
-          rollouts={rollouts}
+          rollouts={pagedRollouts}
+          totalRecords={totalRecordsValue}
           isFetching={isFetching}
           isError={isError}
           error={error}

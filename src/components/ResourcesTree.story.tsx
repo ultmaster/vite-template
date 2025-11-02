@@ -17,6 +17,9 @@ type Story = StoryObj<typeof ResourcesTree>;
 
 const simpleResources: Resources = {
   resourcesId: 'rs-simple-001',
+  version: 1,
+  createTime: 1704067200,
+  updateTime: 1706668800,
   resources: {
     apiKey: { value: 'sk-test-key-123', type: 'secret' },
     maxRetries: { value: 3, description: 'Maximum retry attempts' },
@@ -27,6 +30,9 @@ const simpleResources: Resources = {
 
 const nestedResources: Resources = {
   resourcesId: 'rs-nested-001',
+  version: 2,
+  createTime: 1709251200,
+  updateTime: 1711856800,
   resources: {
     model: {
       name: 'gpt-4',
@@ -56,6 +62,9 @@ const nestedResources: Resources = {
 
 const arrayResources: Resources = {
   resourcesId: 'rs-array-001',
+  version: 3,
+  createTime: 1712217600,
+  updateTime: 1714823200,
   resources: {
     compute: {
       instances: [
@@ -76,6 +85,9 @@ const arrayResources: Resources = {
 
 const complexResources: Resources = {
   resourcesId: 'rs-complex-001',
+  version: 4,
+  createTime: 1706745600,
+  updateTime: 1710000000,
   resources: {
     model: {
       name: 'claude-3-opus',
@@ -132,6 +144,9 @@ const complexResources: Resources = {
 
 const emptyResources: Resources = {
   resourcesId: 'rs-empty-001',
+  version: 1,
+  createTime: 1702000000,
+  updateTime: 1704600000,
   resources: {},
 };
 

@@ -2,7 +2,15 @@ import type { BaseQueryFn } from '@reduxjs/toolkit/query';
 import { createApi, fetchBaseQuery, type FetchArgs, type FetchBaseQueryError } from '@reduxjs/toolkit/query/react';
 import type { RootState } from '@/store';
 import { camelCaseKeys } from '@/utils/format';
-import type { Attempt, Rollout, Span, Timestamp } from '../../types';
+import type {
+  Attempt,
+  PaginatedResponse,
+  Rollout,
+  RolloutMode,
+  RolloutStatus,
+  Span,
+  Timestamp,
+} from '../../types';
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: '/',
@@ -94,6 +102,31 @@ const normalizeSpan = (value: unknown): Span => {
   };
 };
 
+const normalizePaginatedResponse = <T>(
+  value: unknown,
+  normalizer: (item: unknown) => T,
+): PaginatedResponse<T> => {
+  if (!value || typeof value !== 'object') {
+    throw new Error('Expected paginated response payload');
+  }
+
+  const camelized = camelCaseKeys(value) as {
+    items?: unknown;
+    limit?: number;
+    offset?: number;
+    total?: number;
+  };
+
+  const itemsSource = Array.isArray(camelized.items) ? camelized.items : [];
+
+  return {
+    items: itemsSource.map((item) => normalizer(item)),
+    limit: typeof camelized.limit === 'number' ? camelized.limit : itemsSource.length,
+    offset: typeof camelized.offset === 'number' ? camelized.offset : 0,
+    total: typeof camelized.total === 'number' ? camelized.total : itemsSource.length,
+  };
+};
+
 const dynamicBaseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
   args,
   api,
@@ -115,60 +148,142 @@ const dynamicBaseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryE
   return rawBaseQuery({ ...preparedArgs, url: absoluteUrl }, api, extraOptions);
 };
 
+export type GetRolloutsQueryArgs = {
+  limit: number;
+  offset: number;
+  sortBy?: string | null;
+  sortOrder?: 'asc' | 'desc';
+  statusIn?: RolloutStatus[];
+  rolloutIdContains?: string | null;
+  modeIn?: RolloutMode[];
+};
+
+export type GetRolloutAttemptsQueryArgs = {
+  rolloutId: string;
+  limit?: number;
+  offset?: number;
+  sortBy?: string | null;
+  sortOrder?: 'asc' | 'desc';
+};
+
+export type GetSpansQueryArgs = {
+  rolloutId: string;
+  attemptId?: string | null;
+  limit?: number;
+  offset?: number;
+  sortBy?: string | null;
+  sortOrder?: 'asc' | 'desc';
+  traceIdContains?: string | null;
+  spanIdContains?: string | null;
+  parentIdContains?: string | null;
+  nameContains?: string | null;
+};
+
 export const rolloutsApi = createApi({
   reducerPath: 'rolloutsApi',
   baseQuery: dynamicBaseQuery,
   tagTypes: ['Rollout', 'Span'],
   endpoints: (builder) => ({
-    getRollouts: builder.query<Rollout[], void>({
-      query: () => ({ url: 'rollouts', method: 'GET' }),
-      transformResponse: (response: unknown) => {
-        if (!Array.isArray(response)) {
-          throw new Error('Expected rollouts list payload');
+    getRollouts: builder.query<PaginatedResponse<Rollout>, GetRolloutsQueryArgs>({
+      query: ({
+        limit,
+        offset,
+        sortBy,
+        sortOrder,
+        statusIn,
+        rolloutIdContains,
+        modeIn,
+      }) => {
+        const searchParams = new URLSearchParams();
+        searchParams.set('limit', String(typeof limit === 'number' ? limit : -1));
+        searchParams.set('offset', String(typeof offset === 'number' ? offset : 0));
+        if (sortBy) {
+          searchParams.set('sort_by', sortBy);
+        }
+        if (sortOrder) {
+          searchParams.set('sort_order', sortOrder);
+        }
+        if (statusIn && statusIn.length > 0) {
+          statusIn.forEach((status) => searchParams.append('status_in', status));
+        }
+        if (modeIn && modeIn.length > 0) {
+          modeIn.forEach((mode) => searchParams.append('mode_in', mode));
+        }
+        if (rolloutIdContains && rolloutIdContains.trim().length > 0) {
+          searchParams.set('rollout_id_contains', rolloutIdContains.trim());
         }
 
-        return response.map((rollout) => normalizeRollout(rollout));
+        const queryString = searchParams.toString();
+        const url = queryString.length > 0 ? `agl/v1/rollouts?${queryString}` : 'agl/v1/rollouts';
+        return { url, method: 'GET' };
       },
+      transformResponse: (response: unknown) => normalizePaginatedResponse(response, normalizeRollout),
       providesTags: (result) =>
         result
           ? [
               { type: 'Rollout' as const, id: 'LIST' },
-              ...result.map((rollout) => ({ type: 'Rollout' as const, id: rollout.rolloutId })),
+              ...result.items.map((rollout) => ({ type: 'Rollout' as const, id: rollout.rolloutId })),
             ]
           : [{ type: 'Rollout' as const, id: 'LIST' }],
     }),
-    getRolloutAttempts: builder.query<Attempt[], string>({
-      query: (rolloutId) => ({ url: `rollouts/${rolloutId}/attempts`, method: 'GET' }),
-      transformResponse: (response: unknown) => {
-        if (!Array.isArray(response)) {
-          throw new Error('Expected attempts list payload');
+    getRolloutAttempts: builder.query<PaginatedResponse<Attempt>, GetRolloutAttemptsQueryArgs>({
+      query: ({ rolloutId, limit = -1, offset = 0, sortBy, sortOrder }) => {
+        const searchParams = new URLSearchParams();
+        searchParams.set('limit', String(typeof limit === 'number' ? limit : -1));
+        searchParams.set('offset', String(typeof offset === 'number' ? offset : 0));
+        if (sortBy) {
+          searchParams.set('sort_by', sortBy);
         }
-
-        return response.map((attempt) => normalizeAttemptStrict(attempt));
+        if (sortOrder) {
+          searchParams.set('sort_order', sortOrder);
+        }
+        const queryString = searchParams.toString();
+        const url =
+          queryString.length > 0
+            ? `agl/v1/rollouts/${rolloutId}/attempts?${queryString}`
+            : `agl/v1/rollouts/${rolloutId}/attempts`;
+        return { url, method: 'GET' };
       },
-      providesTags: (_result, _error, rolloutId) => [{ type: 'Rollout', id: rolloutId }],
+      transformResponse: (response: unknown) =>
+        normalizePaginatedResponse(response, normalizeAttemptStrict),
+      providesTags: (_result, _error, queryArgs) => [{ type: 'Rollout', id: queryArgs.rolloutId }],
     }),
-    getSpans: builder.query<
-      Span[],
-      { rolloutId: string; attemptId?: string | null } | undefined
-    >({
+    getSpans: builder.query<PaginatedResponse<Span>, GetSpansQueryArgs>({
       query: (args) => {
-        if (!args || !args.rolloutId) {
+        if (!args.rolloutId) {
           throw new Error('rolloutId is required to fetch spans');
         }
         const searchParams = new URLSearchParams({ rollout_id: args.rolloutId });
         if (args.attemptId) {
           searchParams.set('attempt_id', args.attemptId);
         }
-        return { url: `spans?${searchParams.toString()}`, method: 'GET' };
-      },
-      transformResponse: (response: unknown) => {
-        if (!Array.isArray(response)) {
-          throw new Error('Expected spans list payload');
+        if (typeof args.limit === 'number') {
+          searchParams.set('limit', String(args.limit));
         }
-
-        return response.map((span) => normalizeSpan(span));
+        if (typeof args.offset === 'number') {
+          searchParams.set('offset', String(args.offset));
+        }
+        if (args.sortBy) {
+          searchParams.set('sort_by', args.sortBy);
+        }
+        if (args.sortOrder) {
+          searchParams.set('sort_order', args.sortOrder);
+        }
+        if (args.traceIdContains) {
+          searchParams.set('trace_id_contains', args.traceIdContains);
+        }
+        if (args.spanIdContains) {
+          searchParams.set('span_id_contains', args.spanIdContains);
+        }
+        if (args.parentIdContains) {
+          searchParams.set('parent_id_contains', args.parentIdContains);
+        }
+        if (args.nameContains) {
+          searchParams.set('name_contains', args.nameContains);
+        }
+        return { url: `agl/v1/spans?${searchParams.toString()}`, method: 'GET' };
       },
+      transformResponse: (response: unknown) => normalizePaginatedResponse(response, normalizeSpan),
       providesTags: (_result, _error, args) =>
         args
           ? [

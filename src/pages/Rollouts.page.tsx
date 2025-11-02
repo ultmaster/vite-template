@@ -9,6 +9,7 @@ import {
   type Rollout,
   type RolloutMode,
   type RolloutStatus,
+  selectRolloutsQueryArgs,
   resetRolloutsFilters,
   selectRolloutsModeFilters,
   selectRolloutsPage,
@@ -36,12 +37,17 @@ function RolloutAttemptsContent({
   rollout: Rollout;
   columns: DataTableColumn<RolloutTableRecord>[];
 }) {
-  const { data, isFetching, isError, refetch } = useGetRolloutAttemptsQuery(rollout.rolloutId);
+  const { data, isFetching, isError, refetch } = useGetRolloutAttemptsQuery({
+    rolloutId: rollout.rolloutId,
+    limit: 100,
+    sortBy: 'sequence_id',
+    sortOrder: 'desc',
+  });
 
   return (
     <RolloutAttemptsTable
       rollout={rollout}
-      attempts={data}
+      attempts={data?.items}
       isFetching={isFetching}
       isError={isError}
       onRetry={refetch}
@@ -87,6 +93,7 @@ export function RolloutsPage() {
   const page = useAppSelector(selectRolloutsPage);
   const recordsPerPage = useAppSelector(selectRolloutsRecordsPerPage);
   const sort = useAppSelector(selectRolloutsSort);
+  const rolloutsQueryArgs = useAppSelector(selectRolloutsQueryArgs);
 
   const {
     data: rolloutsData,
@@ -95,7 +102,7 @@ export function RolloutsPage() {
     isError,
     error,
     refetch,
-  } = useGetRolloutsQuery(undefined, {
+  } = useGetRolloutsQuery(rolloutsQueryArgs, {
     pollingInterval: autoRefreshMs > 0 ? autoRefreshMs : undefined,
   });
 
@@ -186,7 +193,7 @@ export function RolloutsPage() {
     [dispatch],
   );
 
-  const hasRollouts = Array.isArray(rolloutsData) && rolloutsData.length > 0;
+  const hasRollouts = Array.isArray(rolloutsData?.items) && rolloutsData.items.length > 0;
   const showSkeleton = isLoading && !hasRollouts;
 
   useEffect(() => {
@@ -231,7 +238,8 @@ export function RolloutsPage() {
         <Skeleton height={360} radius="md" />
       ) : (
         <RolloutTable
-          rollouts={rolloutsData}
+          rollouts={rolloutsData?.items}
+          totalRecords={rolloutsData?.total ?? 0}
           isFetching={isFetching}
           isError={isError}
           error={error}

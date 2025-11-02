@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Box, Stack, TextInput, Title } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
-import { TracesTable } from './TracesTable.component';
+import { TracesTable, buildTraceRecord, type TracesTableRecord } from './TracesTable.component';
 import type { Span } from '@/types';
+import { compareRecords } from '@/utils/table';
 
 const meta: Meta<typeof TracesTable> = {
   title: 'Components/TracesTable',
@@ -214,6 +215,52 @@ function TracesTableStoryWrapper({
     direction: 'desc',
   });
 
+  const tableRecords = useMemo<TracesTableRecord[]>(() => {
+    if (!spans) {
+      return [];
+    }
+    return spans.map((span) => buildTraceRecord(span));
+  }, [spans]);
+
+  const filteredRecords = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    if (normalizedSearch.length === 0) {
+      return tableRecords;
+    }
+    return tableRecords.filter(
+      (record) =>
+        record.traceId.toLowerCase().includes(normalizedSearch) ||
+        record.spanId.toLowerCase().includes(normalizedSearch) ||
+        record.name.toLowerCase().includes(normalizedSearch),
+    );
+  }, [searchTerm, tableRecords]);
+
+  const sortedRecords = useMemo(() => {
+    const sorted = filteredRecords.slice();
+    if (!sorted.length) {
+      return sorted;
+    }
+    const comparatorKey = sort.column as keyof TracesTableRecord;
+    if (!(comparatorKey in sorted[0])) {
+      return sorted;
+    }
+    sorted.sort((a, b) => compareRecords(a, b, comparatorKey));
+    if (sort.direction === 'desc') {
+      sorted.reverse();
+    }
+    return sorted;
+  }, [filteredRecords, sort]);
+
+  const totalRecordsValue = sortedRecords.length;
+
+  const pagedRecords = useMemo(() => {
+    const startIndex = (page - 1) * recordsPerPage;
+    const endIndex = startIndex + recordsPerPage;
+    return sortedRecords.slice(startIndex, endIndex);
+  }, [page, recordsPerPage, sortedRecords]);
+
+  const pagedSpans = useMemo(() => pagedRecords.map((record) => record as Span), [pagedRecords]);
+
   const handleShowRollout = (record: any) => {
     // eslint-disable-next-line no-console
     console.log('Show rollout for:', record.rolloutId);
@@ -244,7 +291,8 @@ function TracesTableStoryWrapper({
           style={{ maxWidth: 360 }}
         />
         <TracesTable
-          spans={spans}
+          spans={pagedSpans}
+          totalRecords={totalRecordsValue}
           isFetching={isFetching}
           isError={isError}
           error={error}

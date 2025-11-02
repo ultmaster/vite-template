@@ -210,6 +210,243 @@ const spansByAttempt: Record<string, Span[]> = {
   ],
 };
 
+const parseNumberParam = (params: URLSearchParams, key: string, defaultValue: number): number => {
+  const raw = params.get(key);
+  if (raw == null) {
+    return defaultValue;
+  }
+  const value = Number(raw);
+  if (!Number.isFinite(value)) {
+    return defaultValue;
+  }
+  return value;
+};
+
+const filterRolloutsForParams = (rollouts: Rollout[], params: URLSearchParams): Rollout[] => {
+  const statusFilters = params.getAll('status_in');
+  const modeFilters = params.getAll('mode_in');
+  const rolloutIdContains = params.get('rollout_id_contains');
+
+  return rollouts.filter((rollout) => {
+    if (statusFilters.length > 0 && !statusFilters.includes(rollout.status)) {
+      return false;
+    }
+    if (modeFilters.length > 0 && (!rollout.mode || !modeFilters.includes(rollout.mode))) {
+      return false;
+    }
+    if (rolloutIdContains && !rollout.rolloutId.includes(rolloutIdContains)) {
+      return false;
+    }
+    return true;
+  });
+};
+
+const getRolloutSortValue = (rollout: Rollout, sortBy: string): string | number | null => {
+  switch (sortBy) {
+    case 'rollout_id':
+      return rollout.rolloutId;
+    case 'status':
+      return rollout.status;
+    case 'mode':
+      return rollout.mode ?? '';
+    case 'start_time':
+    default:
+      return rollout.attempt?.startTime ?? rollout.startTime ?? null;
+  }
+};
+
+const sortRolloutsForParams = (
+  rollouts: Rollout[],
+  sortBy: string | null,
+  sortOrder: 'asc' | 'desc',
+): Rollout[] => {
+  const resolvedSortBy = sortBy ?? 'start_time';
+  const sorted = [...rollouts].sort((a, b) => {
+    const aValue = getRolloutSortValue(a, resolvedSortBy);
+    const bValue = getRolloutSortValue(b, resolvedSortBy);
+    if (aValue === bValue) {
+      return 0;
+    }
+    if (aValue == null) {
+      return -1;
+    }
+    if (bValue == null) {
+      return 1;
+    }
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      return aValue - bValue;
+    }
+    return String(aValue).localeCompare(String(bValue));
+  });
+  if (sortOrder === 'desc') {
+    sorted.reverse();
+  }
+  return sorted;
+};
+
+const buildRolloutsResponse = (request: Request) => {
+  const url = new URL(request.url);
+  const params = url.searchParams;
+  const filtered = filterRolloutsForParams(sampleRollouts, params);
+  const sortBy = params.get('sort_by');
+  const sortOrder = params.get('sort_order') === 'desc' ? 'desc' : 'asc';
+  const sorted = sortRolloutsForParams(filtered, sortBy, sortOrder);
+  const limitParam = parseNumberParam(params, 'limit', sorted.length);
+  const offsetParam = parseNumberParam(params, 'offset', 0);
+  const effectiveLimit = limitParam < 0 ? sorted.length : limitParam;
+  const offset = offsetParam < 0 ? 0 : offsetParam;
+  const paginated =
+    effectiveLimit >= 0 ? sorted.slice(offset, offset + effectiveLimit) : [...sorted];
+
+  return snakeCaseKeys({
+    items: paginated,
+    limit: effectiveLimit,
+    offset,
+    total: filtered.length,
+  });
+};
+
+const sortAttemptsForParams = (
+  attempts: Attempt[],
+  sortBy: string | null,
+  sortOrder: 'asc' | 'desc',
+): Attempt[] => {
+  const sorted = [...attempts];
+  const resolvedSortBy = sortBy ?? 'sequence_id';
+  sorted.sort((a, b) => {
+    if (resolvedSortBy === 'start_time') {
+      return a.startTime - b.startTime;
+    }
+    return a.sequenceId - b.sequenceId;
+  });
+  if (sortOrder === 'desc') {
+    sorted.reverse();
+  }
+  return sorted;
+};
+
+const buildAttemptsResponse = (rolloutId: string, request: Request) => {
+  const attempts = attemptsByRollout[rolloutId] ?? [];
+  const url = new URL(request.url);
+  const params = url.searchParams;
+  const sortBy = params.get('sort_by');
+  const sortOrder = params.get('sort_order') === 'desc' ? 'desc' : 'asc';
+  const sorted = sortAttemptsForParams(attempts, sortBy, sortOrder);
+  const limitParam = parseNumberParam(params, 'limit', sorted.length);
+  const offsetParam = parseNumberParam(params, 'offset', 0);
+  const effectiveLimit = limitParam < 0 ? sorted.length : limitParam;
+  const offset = offsetParam < 0 ? 0 : offsetParam;
+  const paginated =
+    effectiveLimit >= 0 ? sorted.slice(offset, offset + effectiveLimit) : [...sorted];
+
+  return snakeCaseKeys({
+    items: paginated,
+    limit: effectiveLimit,
+    offset,
+    total: attempts.length,
+  });
+};
+
+const filterSpansForParams = (spans: Span[], params: URLSearchParams): Span[] => {
+  const traceContains = params.get('trace_id_contains');
+  const spanContains = params.get('span_id_contains');
+  const nameContains = params.get('name_contains');
+
+  return spans.filter((span) => {
+    if (traceContains && !span.traceId.includes(traceContains)) {
+      return false;
+    }
+    if (spanContains && !span.spanId.includes(spanContains)) {
+      return false;
+    }
+    if (nameContains && !span.name.toLowerCase().includes(nameContains.toLowerCase())) {
+      return false;
+    }
+    return true;
+  });
+};
+
+const getSpanSortValue = (span: Span, sortBy: string): string | number | null => {
+  switch (sortBy) {
+    case 'trace_id':
+      return span.traceId;
+    case 'span_id':
+      return span.spanId;
+    case 'parent_id':
+      return span.parentId ?? '';
+    case 'name':
+      return span.name;
+    case 'status_code':
+      return span.status?.status_code ?? '';
+    case 'duration': {
+      if (span.startTime != null && span.endTime != null) {
+        return span.endTime - span.startTime;
+      }
+      return null;
+    }
+    case 'start_time':
+    default:
+      return span.startTime ?? null;
+  }
+};
+
+const sortSpansForParams = (
+  spans: Span[],
+  sortBy: string | null,
+  sortOrder: 'asc' | 'desc',
+): Span[] => {
+  const resolvedSortBy = sortBy ?? 'start_time';
+  const sorted = [...spans].sort((a, b) => {
+    const aValue = getSpanSortValue(a, resolvedSortBy);
+    const bValue = getSpanSortValue(b, resolvedSortBy);
+    if (aValue === bValue) {
+      return 0;
+    }
+    if (aValue == null) {
+      return -1;
+    }
+    if (bValue == null) {
+      return 1;
+    }
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      return aValue - bValue;
+    }
+    return String(aValue).localeCompare(String(bValue));
+  });
+  if (sortOrder === 'desc') {
+    sorted.reverse();
+  }
+  return sorted;
+};
+
+const buildSpansResponse = (request: Request) => {
+  const url = new URL(request.url);
+  const params = url.searchParams;
+  const rolloutId = params.get('rollout_id');
+  if (!rolloutId) {
+    return snakeCaseKeys({ items: [], limit: 0, offset: 0, total: 0 });
+  }
+  const attemptId = params.get('attempt_id');
+  const spans = getSpans(rolloutId, attemptId);
+  const filtered = filterSpansForParams(spans, params);
+  const sortBy = params.get('sort_by');
+  const sortOrder = params.get('sort_order') === 'desc' ? 'desc' : 'asc';
+  const sorted = sortSpansForParams(filtered, sortBy, sortOrder);
+  const limitParam = parseNumberParam(params, 'limit', sorted.length);
+  const offsetParam = parseNumberParam(params, 'offset', 0);
+  const effectiveLimit = limitParam < 0 ? sorted.length : limitParam;
+  const offset = offsetParam < 0 ? 0 : offsetParam;
+  const paginated =
+    effectiveLimit >= 0 ? sorted.slice(offset, offset + effectiveLimit) : [...sorted];
+
+  return snakeCaseKeys({
+    items: paginated,
+    limit: effectiveLimit,
+    offset,
+    total: filtered.length,
+  });
+};
+
 function getSpans(rolloutId: string, attemptId?: string | null) {
   const key = `${rolloutId}:${attemptId ?? 'latest'}`;
   if (attemptId) {
@@ -225,32 +462,24 @@ function getSpans(rolloutId: string, attemptId?: string | null) {
 
 function createHandlers(delayMs = 0) {
   return [
-    http.get('*/rollouts', async () => {
+    http.get('*/agl/v1/rollouts', async ({ request }) => {
       if (delayMs) {
         await delay(delayMs);
       }
-      return HttpResponse.json(sampleRollouts.map((rollout) => snakeCaseKeys(rollout)));
+      return HttpResponse.json(buildRolloutsResponse(request));
     }),
-    http.get('*/rollouts/:rolloutId/attempts', async ({ params }) => {
+    http.get('*/agl/v1/rollouts/:rolloutId/attempts', async ({ params, request }) => {
       const rolloutId = params.rolloutId as string;
       if (delayMs) {
         await delay(delayMs);
       }
-      const attempts = attemptsByRollout[rolloutId] ?? [];
-      return HttpResponse.json(attempts.map((attempt) => snakeCaseKeys(attempt)));
+      return HttpResponse.json(buildAttemptsResponse(rolloutId, request));
     }),
-    http.get('*/spans', async ({ request }) => {
-      const url = new URL(request.url);
-      const rolloutId = url.searchParams.get('rollout_id');
-      const attemptId = url.searchParams.get('attempt_id');
-      if (!rolloutId) {
-        return HttpResponse.json([], { status: 200 });
-      }
+    http.get('*/agl/v1/spans', async ({ request }) => {
       if (delayMs) {
         await delay(delayMs);
       }
-      const spans = getSpans(rolloutId, attemptId);
-      return HttpResponse.json(spans.map((span) => snakeCaseKeys(span)));
+      return HttpResponse.json(buildSpansResponse(request));
     }),
   ];
 }
@@ -306,9 +535,15 @@ export const ErrorState: Story = {
   parameters: {
     msw: {
       handlers: [
-        http.get('*/rollouts', () => HttpResponse.json([], { status: 200 })),
-        http.get('*/rollouts/:rolloutId/attempts', () => HttpResponse.json([], { status: 200 })),
-        http.get('*/spans', () => HttpResponse.json({ detail: 'server error' }, { status: 500 })),
+        http.get('*/agl/v1/rollouts', () =>
+          HttpResponse.json({ items: [], limit: 0, offset: 0, total: 0 }, { status: 200 }),
+        ),
+        http.get('*/agl/v1/rollouts/:rolloutId/attempts', () =>
+          HttpResponse.json({ items: [], limit: 0, offset: 0, total: 0 }, { status: 200 }),
+        ),
+        http.get('*/agl/v1/spans', () =>
+          HttpResponse.json({ detail: 'server error' }, { status: 500 }),
+        ),
       ],
     },
   },

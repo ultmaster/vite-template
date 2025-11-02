@@ -68,7 +68,17 @@ export type Resource = Record<string, any>;
  */
 export type Resources = {
   resourcesId: string;
+  version: number;
+  createTime: Timestamp;
+  updateTime: Timestamp;
   resources: Record<string, Resource>;
+};
+
+export type PaginatedResponse<T> = {
+  items: T[];
+  limit: number;
+  offset: number;
+  total: number;
 };
 
 /**

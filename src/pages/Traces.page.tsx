@@ -24,6 +24,7 @@ import {
   selectTracesSearchTerm,
   selectTracesSort,
   selectTracesViewMode,
+  selectTracesQueryArgs,
   setTracesAttemptId,
   setTracesPage,
   setTracesRecordsPerPage,
@@ -36,11 +37,12 @@ import {
   useGetRolloutsQuery,
   useGetRolloutAttemptsQuery,
   useGetSpansQuery,
+  type GetRolloutsQueryArgs,
 } from '@/features/rollouts';
 import { openDrawer } from '@/features/ui/drawer';
 import { formatStatusLabel } from '@/utils/format';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import type { Attempt, Rollout } from '@/types';
+import type { Attempt, Rollout, Span } from '@/types';
 
 const VIEW_OPTIONS = [
   { value: 'table', label: 'Table View', disabled: false },
@@ -74,58 +76,70 @@ export function TracesPage() {
   const recordsPerPage = useAppSelector(selectTracesRecordsPerPage);
   const sort = useAppSelector(selectTracesSort);
   const viewMode = useAppSelector(selectTracesViewMode);
+  const spansQueryArgs = useAppSelector(selectTracesQueryArgs);
+
+  const rolloutsQueryArgs = useMemo<GetRolloutsQueryArgs>(
+    () => ({
+      limit: 100,
+      offset: 0,
+      sortBy: 'start_time',
+      sortOrder: 'desc',
+    }),
+    [],
+  );
 
   const {
     data: rolloutsData,
     isLoading: rolloutsLoading,
     isFetching: rolloutsFetching,
-  } = useGetRolloutsQuery(undefined, {
+  } = useGetRolloutsQuery(rolloutsQueryArgs, {
     pollingInterval: autoRefreshMs > 0 ? autoRefreshMs : undefined,
   });
 
-  const selectedRollout = useMemo(
-    () => findRollout(rolloutsData, rolloutId),
-    [rolloutsData, rolloutId],
-  );
+  const rolloutItems = rolloutsData?.items ?? [];
+
+  const selectedRollout = useMemo(() => findRollout(rolloutItems, rolloutId), [rolloutItems, rolloutId]);
+
+  const attemptsQueryArgs =
+    rolloutId !== null
+      ? {
+          rolloutId,
+          limit: 200,
+          sortBy: 'sequence_id',
+          sortOrder: 'desc' as const,
+        }
+      : skipToken;
 
   const {
     data: attemptsData,
     isFetching: attemptsFetching,
-  } = useGetRolloutAttemptsQuery(rolloutId ?? skipToken, {
+  } = useGetRolloutAttemptsQuery(attemptsQueryArgs, {
     pollingInterval: autoRefreshMs > 0 ? autoRefreshMs : undefined,
   });
 
-  const spansArgs =
-    rolloutId != null
-      ? { rolloutId, attemptId: attemptId ?? undefined }
-      : skipToken;
-  const {
-    data: spansData,
-    isFetching: spansFetching,
-    isError: spansIsError,
-    error: spansError,
-    refetch: refetchSpans,
-  } = useGetSpansQuery(spansArgs, {
+  const spansQueryResult = useGetSpansQuery(spansQueryArgs ?? skipToken, {
     pollingInterval: autoRefreshMs > 0 ? autoRefreshMs : undefined,
   });
+  const spansFetching = spansQueryResult.isFetching;
+  const spansIsError = spansQueryResult.isError;
+  const spansError = spansQueryResult.error;
+  const refetchSpans = spansQueryResult.refetch;
 
   useEffect(() => {
     if (!rolloutsData) {
       return;
     }
-    if (rolloutsData.length === 0) {
+    if (rolloutItems.length === 0) {
       if (rolloutId !== null) {
         dispatch(setTracesRolloutId(null));
       }
       return;
     }
-    const rolloutExists = rolloutId
-      ? rolloutsData.some((rollout) => rollout.rolloutId === rolloutId)
-      : false;
+    const rolloutExists = rolloutId ? rolloutItems.some((rollout) => rollout.rolloutId === rolloutId) : false;
     if (!rolloutExists) {
-      dispatch(setTracesRolloutId(rolloutsData[0].rolloutId));
+      dispatch(setTracesRolloutId(rolloutItems[0].rolloutId));
     }
-  }, [dispatch, rolloutsData, rolloutId]);
+  }, [dispatch, rolloutsData, rolloutId, rolloutItems]);
 
   useEffect(() => {
     if (!rolloutId) {
@@ -135,12 +149,12 @@ export function TracesPage() {
       return;
     }
 
-    if (attemptsData && attemptsData.length > 0) {
+    if (attemptsData && attemptsData.items.length > 0) {
       const hasSelected = attemptId
-        ? attemptsData.some((attempt) => attempt.attemptId === attemptId)
+        ? attemptsData.items.some((attempt) => attempt.attemptId === attemptId)
         : false;
       if (!hasSelected) {
-        const latest = getLatestAttempt(attemptsData);
+        const latest = getLatestAttempt(attemptsData.items);
         if (latest && latest.attemptId !== attemptId) {
           dispatch(setTracesAttemptId(latest.attemptId));
         }
@@ -156,16 +170,16 @@ export function TracesPage() {
 
   const rolloutOptions = useMemo(
     () =>
-      (rolloutsData ?? []).map((rollout) => ({
+      rolloutItems.map((rollout) => ({
         value: rollout.rolloutId,
         label: rollout.rolloutId,
       })),
-    [rolloutsData],
+    [rolloutItems],
   );
 
   const attemptOptions = useMemo(() => {
-    if (attemptsData && attemptsData.length > 0) {
-      return [...attemptsData]
+    if (attemptsData && attemptsData.items.length > 0) {
+      return [...attemptsData.items]
         .sort((a, b) => b.sequenceId - a.sequenceId)
         .map((attempt) => ({
           value: attempt.attemptId,
@@ -184,9 +198,11 @@ export function TracesPage() {
     return [];
   }, [attemptsData, selectedRollout]);
 
-  const spans = spansData ?? [];
+  const rawSpansData = spansQueryResult.data as any as { items?: Span[]; total?: number } | undefined;
+  const spans = rawSpansData?.items ?? [];
+  const spansTotal = rawSpansData?.total ?? 0;
   const recordsPerPageOptions = [50, 100, 200, 500];
-  const isInitialLoading = rolloutsLoading && !rolloutsData;
+  const isInitialLoading = rolloutsLoading && rolloutItems.length === 0;
   const isFetching = spansFetching || rolloutsFetching || attemptsFetching;
 
   const handleSearchTermChange = useCallback(
@@ -234,15 +250,15 @@ export function TracesPage() {
 
   const handleShowRollout = useCallback(
     (record: TracesTableRecord) => {
-      if (!rolloutsData?.length) {
+      if (rolloutItems.length === 0) {
         return;
       }
-      const rollout = rolloutsData.find((item) => item.rolloutId === record.rolloutId);
+      const rollout = rolloutItems.find((item) => item.rolloutId === record.rolloutId);
       if (!rollout) {
         return;
       }
 
-      const attempts = attemptsData ?? [];
+      const attempts = attemptsData?.items ?? [];
       const attemptForRecord =
         attempts.find((attempt) => attempt.attemptId === record.attemptId) ?? rollout.attempt ?? null;
 
@@ -255,13 +271,16 @@ export function TracesPage() {
         }),
       );
     },
-    [attemptsData, dispatch, rolloutsData],
+    [attemptsData, dispatch, rolloutItems],
   );
 
   const handleShowSpanDetail = useCallback(
     (record: TracesTableRecord) => {
-      const rolloutForSpan = rolloutsData?.find((item) => item.rolloutId === record.rolloutId) ?? null;
-      const attempts = attemptsData ?? [];
+      const rolloutForSpan =
+        rolloutItems.length > 0
+          ? rolloutItems.find((item) => item.rolloutId === record.rolloutId) ?? null
+          : null;
+      const attempts = attemptsData?.items ?? [];
       const attemptForSpan =
         attempts.find((attempt) => attempt.attemptId === record.attemptId) ?? rolloutForSpan?.attempt ?? null;
 
@@ -274,7 +293,7 @@ export function TracesPage() {
         }),
       );
     },
-    [attemptsData, dispatch, rolloutsData],
+    [attemptsData, dispatch, rolloutItems],
   );
 
   const handleParentIdClick = useCallback(
@@ -376,6 +395,7 @@ export function TracesPage() {
       <Skeleton visible={isInitialLoading} radius="md">
         <TracesTable
           spans={rolloutId ? spans : []}
+          totalRecords={spansTotal}
           isFetching={isFetching}
           isError={spansIsError}
           error={spansError}

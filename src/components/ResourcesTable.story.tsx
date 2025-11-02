@@ -21,6 +21,9 @@ type Story = StoryObj<typeof ResourcesTable>;
 const sampleResources: Resources[] = [
   {
     resourcesId: 'rs-story-001',
+    version: 1,
+    createTime: 1710806400,
+    updateTime: 1713412800,
     resources: {
       model: {
         name: 'gpt-4',
@@ -49,6 +52,9 @@ const sampleResources: Resources[] = [
   },
   {
     resourcesId: 'rs-story-002',
+    version: 2,
+    createTime: 1712217600,
+    updateTime: 1714823200,
     resources: {
       model: {
         name: 'claude-3-opus',
@@ -80,6 +86,9 @@ const sampleResources: Resources[] = [
   },
   {
     resourcesId: 'rs-story-003',
+    version: 3,
+    createTime: 1709251200,
+    updateTime: 1711856800,
     resources: {
       model: {
         name: 'gpt-3.5-turbo',
@@ -101,6 +110,9 @@ const sampleResources: Resources[] = [
   },
   {
     resourcesId: 'rs-story-004',
+    version: 1,
+    createTime: 1706745600,
+    updateTime: 1709347200,
     resources: {
       apiKeys: {
         openai: 'sk-***',
@@ -116,6 +128,9 @@ const sampleResources: Resources[] = [
   },
   {
     resourcesId: 'rs-story-005',
+    version: 1,
+    createTime: 1704067200,
+    updateTime: 1706668800,
     resources: {},
   },
 ];
@@ -224,6 +239,9 @@ export const EmptyResources: Story = {
       resourcesList={[
         {
           resourcesId: 'rs-empty-001',
+          version: 1,
+          createTime: 1702000000,
+          updateTime: 1704600000,
           resources: {},
         },
       ]}

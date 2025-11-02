@@ -24,7 +24,7 @@ import {
   Tooltip,
 } from '@mantine/core';
 import type { Resources } from '@/types';
-import { safeStringify } from '@/utils/format';
+import { formatDateTime, safeStringify } from '@/utils/format';
 import {
   compareRecords,
   createResponsiveColumns,
@@ -35,8 +35,11 @@ const DEFAULT_RECORDS_PER_PAGE_OPTIONS = [50, 100, 200, 500];
 
 const COLUMN_VISIBILITY: Record<string, ColumnVisibilityConfig> = {
   resourcesId: { fixedWidth: 12, priority: 0 },
-  resourceCount: { fixedWidth: 8, priority: 2 },
-  resourcesPreview: { minWidth: 16, priority: 1 },
+  version: { fixedWidth: 8, priority: 1 },
+  createTime: { fixedWidth: 14, priority: 2 },
+  updateTime: { fixedWidth: 14, priority: 2 },
+  resourceCount: { fixedWidth: 8, priority: 3 },
+  resourcesPreview: { minWidth: 16, priority: 4 },
 };
 
 export type ResourcesTableRecord = Resources & {
@@ -97,6 +100,27 @@ function createResourcesColumns(_options: ResourcesColumnsOptions): DataTableCol
       ),
     },
     {
+      accessor: 'version',
+      title: 'Version',
+      sortable: true,
+      textAlign: 'left',
+      render: ({ version }) => <Text size="sm">{version}</Text>,
+    },
+    {
+      accessor: 'createTime',
+      title: 'Created',
+      sortable: true,
+      textAlign: 'left',
+      render: ({ createTime }) => <Text size="sm">{formatDateTime(createTime)}</Text>,
+    },
+    {
+      accessor: 'updateTime',
+      title: 'Updated',
+      sortable: true,
+      textAlign: 'left',
+      render: ({ updateTime }) => <Text size="sm">{formatDateTime(updateTime)}</Text>,
+    },
+    {
       accessor: 'resourceCount',
       title: 'Count',
       sortable: true,
@@ -115,7 +139,10 @@ function createResourcesColumns(_options: ResourcesColumnsOptions): DataTableCol
   ];
 }
 
-type ComparatorKey = keyof Pick<ResourcesTableRecord, 'resourcesId' | 'resourceCount'>;
+type ComparatorKey = keyof Pick<
+  ResourcesTableRecord,
+  'resourcesId' | 'version' | 'createTime' | 'updateTime' | 'resourceCount'
+>;
 
 type RowExpansionRenderer = (context: {
   resources: Resources;

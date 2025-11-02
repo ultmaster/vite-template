@@ -26,11 +26,7 @@ import {
 } from '@mantine/core';
 import type { Span } from '@/types';
 import { formatDateTime, formatDuration, toTimestamp } from '@/utils/format';
-import {
-  compareRecords,
-  createResponsiveColumns,
-  type ColumnVisibilityConfig,
-} from '@/utils/table';
+import { createResponsiveColumns, type ColumnVisibilityConfig } from '@/utils/table';
 
 const DEFAULT_RECORDS_PER_PAGE_OPTIONS = [50, 100, 200, 500];
 
@@ -274,13 +270,9 @@ function createTracesColumns({
   ];
 }
 
-type ComparatorKey = keyof Pick<
-  TracesTableRecord,
-  'traceId' | 'spanId' | 'parentId' | 'name' | 'statusCode' | 'startTime' | 'duration'
->;
-
 export type TracesTableProps = {
   spans: Span[] | undefined;
+  totalRecords: number;
   isFetching: boolean;
   isError: boolean;
   error: unknown;
@@ -301,6 +293,7 @@ export type TracesTableProps = {
 
 export function TracesTable({
   spans,
+  totalRecords,
   isFetching,
   isError,
   error,
@@ -347,48 +340,16 @@ export function TracesTable({
     [columns, containerWidth]
   );
 
-  const filteredRecords = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-
-    return traceRecords.filter((record) => {
-      const matchesSearch =
-        normalizedSearch.length === 0 ||
-        record.traceId.toLowerCase().includes(normalizedSearch) ||
-        record.spanId.toLowerCase().includes(normalizedSearch) ||
-        record.name.toLowerCase().includes(normalizedSearch);
-
-      return matchesSearch;
-    });
-  }, [traceRecords, searchTerm]);
-
-  const sortedRecords = useMemo(() => {
-    const sorted = filteredRecords.slice();
-    const { column, direction } = sort;
-    const comparatorKey = column as ComparatorKey;
-    if (!sorted.length || !(comparatorKey in sorted[0])) {
-      return sorted;
-    }
-    sorted.sort((a, b) => compareRecords(a, b, comparatorKey));
-    if (direction === 'desc') {
-      sorted.reverse();
-    }
-    return sorted;
-  }, [filteredRecords, sort]);
-
-  const totalRecords = sortedRecords.length;
-  const totalPages = Math.max(1, Math.ceil(totalRecords / recordsPerPage));
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(Math.max(0, totalRecords) / Math.max(1, recordsPerPage))),
+    [recordsPerPage, totalRecords],
+  );
 
   useEffect(() => {
     if (page > totalPages) {
       onPageChange(totalPages);
     }
   }, [onPageChange, page, totalPages]);
-
-  const paginatedRecords = useMemo(() => {
-    const startIndex = (page - 1) * recordsPerPage;
-    const endIndex = startIndex + recordsPerPage;
-    return sortedRecords.slice(startIndex, endIndex);
-  }, [page, recordsPerPage, sortedRecords]);
 
   const hasActiveFilters = searchTerm.trim().length > 0;
 
@@ -474,9 +435,9 @@ export function TracesTable({
         withColumnBorders
         highlightOnHover
         verticalAlign="center"
-        minHeight={paginatedRecords.length === 0 ? 500 : undefined}
+        minHeight={traceRecords.length === 0 ? 500 : undefined}
         idAccessor="spanId"
-        records={paginatedRecords}
+        records={traceRecords}
         columns={responsiveColumns}
         totalRecords={totalRecords}
         recordsPerPage={recordsPerPage}
@@ -488,7 +449,7 @@ export function TracesTable({
         onSortStatusChange={handleSortStatusChange}
         fetching={isFetching}
         loaderSize="sm"
-        emptyState={paginatedRecords.length === 0 ? emptyState : undefined}
+        emptyState={traceRecords.length === 0 ? emptyState : undefined}
       />
     </Box>
   );
